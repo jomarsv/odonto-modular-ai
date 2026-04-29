@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { collectionNames, db, serializeDocs } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
+import { requireModule } from "../middleware/modules.js";
 import { getMonthlyEstimate } from "../services/billing.service.js";
 import { asyncHandler, requireUser } from "../utils/http.js";
 
 export const billingRouter = Router();
 billingRouter.use(authenticate);
+billingRouter.use(requireModule(["billing"]));
 
 billingRouter.get(
   "/estimate",

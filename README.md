@@ -213,6 +213,21 @@ npx vercel@latest logs https://odonto-modular-ai.vercel.app --no-follow --level 
 
 Cada modulo tem `basePrice` e pode ser ativado/desativado por clinica em `ClinicModule`.
 
+Rotas de funcionalidades validam modulos ativos no backend. Se uma clinica desativar um modulo, a tela sai do menu e a API correspondente retorna `403`.
+
+## Usuarios e roles
+
+O app permite cadastro de nova clinica na tela inicial e criacao de usuarios da equipe por clinica.
+
+Roles disponiveis:
+
+- `ADMIN`
+- `CLINIC_MANAGER`
+- `DENTIST`
+- `ASSISTANT`
+
+Somente `ADMIN` e `CLINIC_MANAGER` podem listar usuarios, criar usuarios e alterar roles dentro da propria clinica.
+
 ## IA no MVP
 
 A API exposta e:

@@ -2,11 +2,13 @@ import { Router } from "express";
 import { z } from "zod";
 import { collectionNames, addDoc, db, getById, now, serializeDocs, updateDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
+import { requireModule } from "../middleware/modules.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
 export const patientRouter = Router();
 patientRouter.use(authenticate);
+patientRouter.use(requireModule(["patients"]));
 
 const patientSchema = z.object({
   fullName: z.string().min(2),

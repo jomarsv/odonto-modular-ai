@@ -11,6 +11,12 @@ import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
 export const authRouter = Router();
 
+function withoutPasswordHash<T extends Record<string, unknown> | null | undefined>(user: T) {
+  if (!user) return user;
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+  return safeUser;
+}
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6)
@@ -81,10 +87,10 @@ authRouter.post(
         })
       )
     );
-    const user = await getById(collectionNames.users, userRef.id);
+    const user = await getById<Record<string, unknown>>(collectionNames.users, userRef.id);
     const clinic = await getById(collectionNames.clinics, clinicRef.id);
     const token = jwt.sign({ sub: userRef.id }, config.jwtSecret, { expiresIn: "8h" });
-    res.status(201).json({ token, user, clinic });
+    res.status(201).json({ token, user: withoutPasswordHash(user), clinic });
   })
 );
 

@@ -3,11 +3,13 @@ import { z } from "zod";
 import { aiPrecisionLevels } from "../domain.js";
 import { collectionNames, db, getById, serializeDocs } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
+import { requireModule } from "../middleware/modules.js";
 import { generateText } from "../services/ai.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
 export const aiRouter = Router();
 aiRouter.use(authenticate);
+aiRouter.use(requireModule(["ai-basic", "ai-advanced"]));
 
 const aiSchema = z.object({
   featureKey: z.enum(["record-summary", "clinical-report", "patient-guidance"]),

@@ -12,6 +12,7 @@ import { moduleRouter } from "./routes/module.routes.js";
 import { aiRouter } from "./routes/ai.routes.js";
 import { billingRouter } from "./routes/billing.routes.js";
 import { dashboardRouter } from "./routes/dashboard.routes.js";
+import { userRouter } from "./routes/user.routes.js";
 
 export const app = express();
 
@@ -21,6 +22,7 @@ app.use("/uploads", express.static(path.resolve(config.uploadDir)));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, name: "Odonto Modular AI" }));
 app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/patients", patientRouter);
 app.use("/api/appointments", appointmentRouter);

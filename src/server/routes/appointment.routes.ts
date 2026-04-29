@@ -3,11 +3,13 @@ import { z } from "zod";
 import { appointmentStatuses } from "../domain.js";
 import { addDoc, collectionNames, db, getById, now, serializeDocs, updateDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
+import { requireModule } from "../middleware/modules.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
 export const appointmentRouter = Router();
 appointmentRouter.use(authenticate);
+appointmentRouter.use(requireModule(["appointments"]));
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1),

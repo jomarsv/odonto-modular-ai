@@ -49,10 +49,20 @@ const tabs = [
   ["appointments", "Agenda"],
   ["records", "Prontuario"],
   ["documents", "Documentos"],
+  ["users", "Equipe"],
   ["modules", "Modulos"],
   ["ai", "Uso de IA"],
   ["billing", "Cobranca"]
 ] as const;
+
+const tabModules: Partial<Record<(typeof tabs)[number][0], string[]>> = {
+  patients: ["patients"],
+  appointments: ["appointments"],
+  records: ["records"],
+  documents: ["documents"],
+  ai: ["ai-basic", "ai-advanced"],
+  billing: ["billing"]
+};
 
 function money(value: number | string) {
   return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -76,8 +86,19 @@ export default function App() {
   const api = useMemo(() => new ApiClient(() => session?.token ?? null), [session]);
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number][0]>("dashboard");
   const [message, setMessage] = useState("");
+  const [modules, setModules] = useState<Array<{ id: string; key: string; enabled: boolean }>>([]);
+
+  useEffect(() => {
+    if (session) api.get<Array<{ id: string; key: string; enabled: boolean }>>("/modules").then(setModules).catch(() => setModules([]));
+  }, [api, session]);
 
   if (!session) return <Login onLogin={setSession} />;
+  const enabledModules = new Set(modules.filter((module) => module.enabled).map((module) => module.key));
+  const visibleTabs = tabs.filter(([id]) => {
+    if (id === "users") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
+    const required = tabModules[id];
+    return !required || required.some((key) => enabledModules.has(key));
+  });
 
   return (
     <div className="min-h-screen lg:flex">
@@ -87,7 +108,7 @@ export default function App() {
           <p className="mt-1 text-sm text-slate-500">{session.clinic.name}</p>
         </div>
         <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-1">
-          {tabs.map(([id, label]) => (
+          {visibleTabs.map(([id, label]) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
@@ -114,6 +135,7 @@ export default function App() {
         {activeTab === "appointments" && <Appointments api={api} onSaved={setMessage} />}
         {activeTab === "records" && <Records api={api} onSaved={setMessage} />}
         {activeTab === "documents" && <Documents api={api} onSaved={setMessage} />}
+        {activeTab === "users" && <Users api={api} onSaved={setMessage} />}
         {activeTab === "modules" && <Modules api={api} onSaved={setMessage} />}
         {activeTab === "ai" && <AIUsage api={api} onSaved={setMessage} />}
         {activeTab === "billing" && <Billing api={api} />}
@@ -124,15 +146,26 @@ export default function App() {
 
 function Login({ onLogin }: { onLogin: (session: Session) => void }) {
   const api = useMemo(() => new ApiClient(() => null), []);
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("dentista@demo.com");
   const [password, setPassword] = useState("demo1234");
+  const [name, setName] = useState("");
+  const [clinicName, setClinicName] = useState("");
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
     try {
-      onLogin(await api.post<Session>("/auth/login", { email, password }));
+      onLogin(
+        await api.post<Session>(mode === "login" ? "/auth/login" : "/auth/register", {
+          email,
+          password,
+          name,
+          clinicName,
+          role: "CLINIC_MANAGER"
+        })
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no login.");
     }
@@ -142,16 +175,36 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
     <div className="grid min-h-screen place-items-center bg-slate-100 p-4">
       <form onSubmit={submit} className="panel w-full max-w-md p-6">
         <h1 className="text-2xl font-bold text-slate-900">Odonto Modular AI</h1>
-        <p className="mt-2 text-sm text-slate-500">Acesse a plataforma modular da clinica.</p>
+        <p className="mt-2 text-sm text-slate-500">{mode === "login" ? "Acesse a plataforma modular da clinica." : "Crie a primeira conta da clinica."}</p>
         {error && <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <div className="mt-6 space-y-4">
+          {mode === "register" && (
+            <>
+              <Field label="Nome">
+                <input required value={name} onChange={(event) => setName(event.target.value)} />
+              </Field>
+              <Field label="Clinica">
+                <input required value={clinicName} onChange={(event) => setClinicName(event.target.value)} />
+              </Field>
+            </>
+          )}
           <Field label="E-mail">
             <input value={email} onChange={(event) => setEmail(event.target.value)} />
           </Field>
           <Field label="Senha">
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </Field>
-          <button className="btn-primary w-full">Entrar</button>
+          <button className="btn-primary w-full">{mode === "login" ? "Entrar" : "Criar clinica"}</button>
+          <button
+            type="button"
+            className="btn-secondary w-full"
+            onClick={() => {
+              setError("");
+              setMode(mode === "login" ? "register" : "login");
+            }}
+          >
+            {mode === "login" ? "Cadastrar nova clinica" : "Voltar para login"}
+          </button>
         </div>
       </form>
     </div>
@@ -364,6 +417,51 @@ function Modules({ api, onSaved }: { api: ApiClient; onSaved: (message: string) 
     load();
   }
   return <Section title="Modulos disponiveis"><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{modules.map((m) => <div key={m.id} className="panel p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-primary-700">{m.category}</p><h3 className="mt-1 font-semibold">{m.name}</h3></div><label className="flex items-center gap-2 normal-case tracking-normal"><input className="h-4 w-4" type="checkbox" checked={m.enabled} onChange={(e) => toggle(m.id, e.target.checked)} />Ativo</label></div><p className="mt-3 text-sm text-slate-600">{m.description}</p><p className="mt-3 text-sm font-semibold">{money(m.basePrice)}</p></div>)}</div></Section>;
+}
+
+function Users({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "DENTIST" });
+  const load = () => api.get<typeof users>("/users").then(setUsers);
+  useEffect(() => {
+    load();
+  }, []);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    await api.post("/users", form);
+    setForm({ name: "", email: "", password: "", role: "DENTIST" });
+    onSaved("Usuario criado.");
+    load();
+  }
+  async function changeRole(id: string, role: string) {
+    await api.patch(`/users/${id}/role`, { role });
+    onSaved("Role atualizada.");
+    load();
+  }
+  return (
+    <Section title="Equipe">
+      <div className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <form onSubmit={save} className="panel space-y-3 p-4">
+          <Field label="Nome"><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+          <Field label="E-mail"><input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+          <Field label="Senha inicial"><input required type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
+          <Field label="Role"><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{["DENTIST", "ASSISTANT", "CLINIC_MANAGER", "ADMIN"].map((role) => <option key={role}>{role}</option>)}</select></Field>
+          <button className="btn-primary">Criar usuario</button>
+        </form>
+        <div className="panel overflow-hidden">
+          <Table headers={["Nome", "E-mail", "Role"]}>
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td>{user.name}</td>
+                <td>{user.email}</td>
+                <td><select value={user.role} onChange={(e) => changeRole(user.id, e.target.value)}>{["DENTIST", "ASSISTANT", "CLINIC_MANAGER", "ADMIN"].map((role) => <option key={role}>{role}</option>)}</select></td>
+              </tr>
+            ))}
+          </Table>
+        </div>
+      </div>
+    </Section>
+  );
 }
 
 function AIUsage({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {

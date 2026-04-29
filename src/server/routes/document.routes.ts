@@ -5,6 +5,7 @@ import fs from "node:fs";
 import { config } from "../config.js";
 import { addDoc, collectionNames, db, getById, now, serializeDocs } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
+import { requireModule } from "../middleware/modules.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
@@ -19,6 +20,7 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 export const documentRouter = Router();
 documentRouter.use(authenticate);
+documentRouter.use(requireModule(["documents"]));
 
 documentRouter.get(
   "/patient/:patientId",
