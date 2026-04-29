@@ -15,6 +15,8 @@ export const collectionNames = {
   clinicModules: "clinicModules",
   aiUsageLogs: "aiUsageLogs",
   billingEvents: "billingEvents",
+  subscriptions: "subscriptions",
+  paymentCheckoutSessions: "paymentCheckoutSessions",
   actionLogs: "actionLogs"
 } as const;
 

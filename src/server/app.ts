@@ -17,6 +17,7 @@ import { clinicRouter } from "./routes/clinic.routes.js";
 import { profileRouter } from "./routes/profile.routes.js";
 import { auditRouter } from "./routes/audit.routes.js";
 import { accountRouter } from "./routes/account.routes.js";
+import { subscriptionRouter } from "./routes/subscription.routes.js";
 
 export const app = express();
 
@@ -39,5 +40,6 @@ app.use("/api/documents", documentRouter);
 app.use("/api/modules", moduleRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/billing", billingRouter);
+app.use("/api/subscription", subscriptionRouter);
 
 app.use(errorHandler);

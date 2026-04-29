@@ -100,6 +100,8 @@ AI_MODEL_BASIC=mock-basic
 AI_MODEL_STANDARD=mock-standard
 AI_MODEL_ADVANCED=mock-advanced
 AI_MODEL_SPECIALIST=mock-specialist
+PAYMENT_PROVIDER=mock
+APP_BASE_URL=https://odonto-modular-ai.vercel.app
 ```
 
 Como alternativa aos tres campos `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL` e `FIREBASE_PRIVATE_KEY`, configure uma unica variavel:
@@ -134,6 +136,8 @@ npx vercel@latest env add AI_MODEL_BASIC production
 npx vercel@latest env add AI_MODEL_STANDARD production
 npx vercel@latest env add AI_MODEL_ADVANCED production
 npx vercel@latest env add AI_MODEL_SPECIALIST production
+npx vercel@latest env add PAYMENT_PROVIDER production
+npx vercel@latest env add APP_BASE_URL production
 ```
 
 Depois de alterar variaveis:
@@ -287,6 +291,29 @@ Politica de cobranca dos modulos:
 
 O endpoint `GET /api/billing/invoice/current` gera uma pre-fatura `DRAFT` do ciclo atual, com itens consolidados e eventos do periodo. Essa estrutura prepara a futura integracao com gateway de pagamento.
 
+## Assinaturas e gateway de pagamento
+
+A base de assinatura ja existe sem prender o app a um gateway especifico. O provedor e controlado por:
+
+```text
+PAYMENT_PROVIDER=mock
+APP_BASE_URL=https://odonto-modular-ai.vercel.app
+```
+
+No MVP, `PAYMENT_PROVIDER=mock` cria um checkout simulado e grava os dados no Firestore. As colecoes usadas sao:
+
+- `subscriptions`: assinatura atual da clinica;
+- `paymentCheckoutSessions`: sessoes de checkout criadas;
+- `billingEvents`: eventos internos de cobranca e auditoria financeira.
+
+Endpoints:
+
+- `GET /api/subscription/current`: retorna a assinatura atual da clinica;
+- `POST /api/subscription/checkout`: cria checkout da assinatura para o ciclo atual;
+- `POST /api/subscription/mock/activate`: ativa a assinatura em modo mock.
+
+A tela `Cobranca` mostra o status da assinatura e permite criar/ativar checkout mock. Para integrar Stripe, Mercado Pago ou outro gateway, implemente um provider real mantendo o contrato do servico em `src/server/services/payment.service.ts` e converta webhooks externos em eventos internos no Firestore.
+
 ## Seguranca e LGPD
 
 Implementado na base:
@@ -332,5 +359,6 @@ src/
 - A IA real ainda nao esta conectada a um provider externo.
 - Upload usa armazenamento local em desenvolvimento e `/tmp` em Vercel; arquivos nao sao persistentes entre execucoes serverless.
 - Nao ha gateway de pagamento.
+- O checkout de assinatura ainda e mock; nao captura cartao nem boleto.
 - Analise de imagem odontologica nao foi implementada, apenas deixada como caminho arquitetural.
 - Permissoes por role existem na base, mas os fluxos ainda usam controle simples.

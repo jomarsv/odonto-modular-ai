@@ -716,11 +716,40 @@ function Billing({ api }: { api: ApiClient }) {
   const [estimate, setEstimate] = useState<Record<string, any> | null>(null);
   const [events, setEvents] = useState<Array<Record<string, any>>>([]);
   const [invoice, setInvoice] = useState<Record<string, any> | null>(null);
-  useEffect(() => {
+  const [subscription, setSubscription] = useState<Record<string, any> | null>(null);
+  const [checkout, setCheckout] = useState<Record<string, any> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const loadBilling = () => {
     api.get<Record<string, any>>("/billing/estimate").then(setEstimate);
     api.get<Array<Record<string, any>>>("/billing/events").then(setEvents);
     api.get<Record<string, any>>("/billing/invoice/current").then(setInvoice);
+    api.get<{ subscription: Record<string, any> | null }>("/subscription/current").then((data) => setSubscription(data.subscription));
+  };
+  useEffect(() => {
+    loadBilling();
   }, [api]);
+  async function startCheckout() {
+    setBusy(true);
+    try {
+      const response = await api.post<{ checkout: Record<string, any>; subscription: Record<string, any> | null }>("/subscription/checkout", {});
+      setCheckout(response.checkout);
+      setSubscription(response.subscription);
+      loadBilling();
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function activateMock() {
+    setBusy(true);
+    try {
+      const response = await api.post<{ subscription: Record<string, any> }>("/subscription/mock/activate", { confirm: true });
+      setSubscription(response.subscription);
+      setCheckout(null);
+      loadBilling();
+    } finally {
+      setBusy(false);
+    }
+  }
   if (!estimate) return <Section title="Cobranca"><p>Carregando...</p></Section>;
   return (
     <Section title="Fatura estimada">
@@ -736,6 +765,31 @@ function Billing({ api }: { api: ApiClient }) {
         <Price label="Consumo de IA" value={estimate.aiUsagePrice} />
         <Price label="Seguranca" value={estimate.securityPrice} />
         <Price label="Total estimado" value={estimate.monthlyPrice} highlight />
+      </div>
+      <div className="panel mt-4 p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h3 className="font-semibold">Assinatura</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Status {String(subscription?.status ?? "NAO_INICIADA")} via {String(subscription?.provider ?? "mock")}.
+            </p>
+            {subscription && (
+              <p className="mt-1 text-sm text-slate-500">
+                Periodo: {new Date(String(subscription.currentPeriodStart)).toLocaleDateString("pt-BR")} ate{" "}
+                {new Date(String(subscription.currentPeriodEnd)).toLocaleDateString("pt-BR")}. Valor {money(String(subscription.monthlyAmount ?? 0))}.
+              </p>
+            )}
+            {checkout && <p className="mt-2 rounded-md bg-slate-50 p-3 text-sm text-slate-600">Checkout mock criado: {String(checkout.checkoutUrl)}</p>}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button className="btn-secondary" disabled={busy} onClick={startCheckout}>
+              Criar checkout
+            </button>
+            <button className="btn-primary" disabled={busy} onClick={activateMock}>
+              Ativar mock
+            </button>
+          </div>
+        </div>
       </div>
       {invoice && (
         <div className="panel mt-4 overflow-hidden">
