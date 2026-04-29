@@ -228,6 +228,16 @@ Roles disponiveis:
 
 Somente `ADMIN` e `CLINIC_MANAGER` podem listar usuarios, criar usuarios e alterar roles dentro da propria clinica.
 
+## Prontuario clinico estruturado
+
+O modulo de prontuario inclui:
+
+- evolucoes clinicas textuais por paciente;
+- procedimentos por dente ou regiao;
+- status de tratamento: `PLANNED`, `IN_PROGRESS`, `COMPLETED`;
+- perfil clinico consolidado do paciente;
+- geracao de resumo por IA a partir do historico clinico, quando modulo de IA estiver ativo.
+
 ## IA no MVP
 
 A API exposta e:

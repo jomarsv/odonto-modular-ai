@@ -9,6 +9,7 @@ export const collectionNames = {
   patients: "patients",
   appointments: "appointments",
   clinicalRecords: "clinicalRecords",
+  clinicalProcedures: "clinicalProcedures",
   documentFiles: "documentFiles",
   modules: "modules",
   clinicModules: "clinicModules",

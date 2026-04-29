@@ -34,6 +34,17 @@ type ClinicalRecord = {
   createdAt: string;
 };
 
+type ClinicalProcedure = {
+  id: string;
+  patientId: string;
+  tooth?: string | null;
+  region?: string | null;
+  procedureName: string;
+  status: string;
+  notes?: string | null;
+  createdAt: string;
+};
+
 type DocumentFile = {
   id: string;
   fileName: string;
@@ -356,30 +367,84 @@ function Appointments({ api, onSaved }: { api: ApiClient; onSaved: (message: str
 function Records({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [records, setRecords] = useState<ClinicalRecord[]>([]);
+  const [procedures, setProcedures] = useState<ClinicalProcedure[]>([]);
+  const [summary, setSummary] = useState<Record<string, any> | null>(null);
+  const [aiResult, setAiResult] = useState("");
   const [patientId, setPatientId] = useState("");
   const [form, setForm] = useState({ anamnesis: "", diagnosisNotes: "", treatmentPlan: "", evolutionNotes: "" });
+  const [procedureForm, setProcedureForm] = useState({ tooth: "", region: "", procedureName: "", status: "PLANNED", notes: "" });
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
-  useEffect(() => { if (patientId) api.get<ClinicalRecord[]>(`/records/patient/${patientId}`).then(setRecords); }, [patientId, api]);
+  const loadClinical = () => {
+    if (!patientId) return;
+    api.get<ClinicalRecord[]>(`/records/patient/${patientId}`).then(setRecords);
+    api.get<ClinicalProcedure[]>(`/records/procedures/patient/${patientId}`).then(setProcedures);
+    api.get<Record<string, any>>(`/records/patient/${patientId}/summary`).then(setSummary);
+  };
+  useEffect(loadClinical, [patientId, api]);
   async function save(event: FormEvent) {
     event.preventDefault();
     await api.post<ClinicalRecord>("/records", { ...form, patientId });
     onSaved("Prontuario salvo.");
     setForm({ anamnesis: "", diagnosisNotes: "", treatmentPlan: "", evolutionNotes: "" });
-    api.get<ClinicalRecord[]>(`/records/patient/${patientId}`).then(setRecords);
+    loadClinical();
+  }
+  async function saveProcedure(event: FormEvent) {
+    event.preventDefault();
+    await api.post<ClinicalProcedure>("/records/procedures", { ...procedureForm, patientId });
+    setProcedureForm({ tooth: "", region: "", procedureName: "", status: "PLANNED", notes: "" });
+    onSaved("Procedimento registrado.");
+    loadClinical();
+  }
+  async function updateProcedureStatus(id: string, status: string) {
+    await api.patch(`/records/procedures/${id}/status`, { status });
+    loadClinical();
+  }
+  async function generateSummary() {
+    const context = JSON.stringify(summary ?? {}, null, 2);
+    const response = await api.post<{ text: string }>("/ai/generate", {
+      featureKey: "record-summary",
+      precisionLevel: "STANDARD",
+      patientId,
+      input: context.slice(0, 6000)
+    });
+    setAiResult(response.text);
+    onSaved("Resumo clinico gerado.");
   }
   return (
     <Section title="Prontuario">
       <Field label="Paciente"><select className="mb-4 max-w-xl" value={patientId} onChange={(e) => setPatientId(e.target.value)}><option value="">Selecione</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}</select></Field>
       {patientId && <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
-        <form onSubmit={save} className="panel space-y-3 p-4">
-          <Field label="Anamnese"><textarea value={form.anamnesis} onChange={(e) => setForm({ ...form, anamnesis: e.target.value })} /></Field>
-          <Field label="Diagnostico"><textarea value={form.diagnosisNotes} onChange={(e) => setForm({ ...form, diagnosisNotes: e.target.value })} /></Field>
-          <Field label="Plano de tratamento"><textarea value={form.treatmentPlan} onChange={(e) => setForm({ ...form, treatmentPlan: e.target.value })} /></Field>
-          <Field label="Evolucao clinica"><textarea value={form.evolutionNotes} onChange={(e) => setForm({ ...form, evolutionNotes: e.target.value })} /></Field>
-          <button className="btn-primary">Salvar prontuario</button>
-        </form>
-        <div className="space-y-3">
-          {records.map((record) => <div key={record.id} className="panel p-4 text-sm"><p className="font-semibold">{new Date(record.createdAt).toLocaleString("pt-BR")}</p><p>{record.anamnesis}</p><p>{record.treatmentPlan}</p><p>{record.evolutionNotes}</p></div>)}
+        <div className="space-y-4">
+          <form onSubmit={save} className="panel space-y-3 p-4">
+            <Field label="Anamnese"><textarea value={form.anamnesis} onChange={(e) => setForm({ ...form, anamnesis: e.target.value })} /></Field>
+            <Field label="Diagnostico"><textarea value={form.diagnosisNotes} onChange={(e) => setForm({ ...form, diagnosisNotes: e.target.value })} /></Field>
+            <Field label="Plano de tratamento"><textarea value={form.treatmentPlan} onChange={(e) => setForm({ ...form, treatmentPlan: e.target.value })} /></Field>
+            <Field label="Evolucao clinica"><textarea value={form.evolutionNotes} onChange={(e) => setForm({ ...form, evolutionNotes: e.target.value })} /></Field>
+            <button className="btn-primary">Salvar evolucao</button>
+          </form>
+          <form onSubmit={saveProcedure} className="panel space-y-3 p-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Dente"><input placeholder="Ex: 16" value={procedureForm.tooth} onChange={(e) => setProcedureForm({ ...procedureForm, tooth: e.target.value })} /></Field>
+              <Field label="Regiao"><input placeholder="Ex: Oclusal" value={procedureForm.region} onChange={(e) => setProcedureForm({ ...procedureForm, region: e.target.value })} /></Field>
+            </div>
+            <Field label="Procedimento"><input required value={procedureForm.procedureName} onChange={(e) => setProcedureForm({ ...procedureForm, procedureName: e.target.value })} /></Field>
+            <Field label="Status"><select value={procedureForm.status} onChange={(e) => setProcedureForm({ ...procedureForm, status: e.target.value })}>{["PLANNED", "IN_PROGRESS", "COMPLETED"].map((s) => <option key={s}>{s}</option>)}</select></Field>
+            <Field label="Notas"><textarea value={procedureForm.notes} onChange={(e) => setProcedureForm({ ...procedureForm, notes: e.target.value })} /></Field>
+            <button className="btn-primary">Registrar procedimento</button>
+          </form>
+        </div>
+        <div className="space-y-4">
+          <div className="panel p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div><h3 className="font-semibold">{summary?.patient?.fullName ?? "Perfil clinico"}</h3><p className="text-sm text-slate-500">{procedures.length} procedimentos registrados</p></div>
+              <button className="btn-secondary" onClick={generateSummary}>Resumo IA</button>
+            </div>
+            {aiResult && <pre className="mt-3 whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-sm">{aiResult}</pre>}
+          </div>
+          <div className="panel overflow-hidden"><Table headers={["Dente", "Procedimento", "Status"]}>{procedures.map((p) => <tr key={p.id}><td>{p.tooth || p.region || "-"}</td><td>{p.procedureName}</td><td><select value={p.status} onChange={(e) => updateProcedureStatus(p.id, e.target.value)}>{["PLANNED", "IN_PROGRESS", "COMPLETED"].map((s) => <option key={s}>{s}</option>)}</select></td></tr>)}</Table></div>
+          <div className="space-y-3">
+            {records.map((record) => <div key={record.id} className="panel p-4 text-sm"><p className="font-semibold">{new Date(record.createdAt).toLocaleString("pt-BR")}</p><p>{record.anamnesis}</p><p>{record.treatmentPlan}</p><p>{record.evolutionNotes}</p></div>)}
+          </div>
         </div>
       </div>}
     </Section>

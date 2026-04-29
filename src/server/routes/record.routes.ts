@@ -19,6 +19,15 @@ const recordSchema = z.object({
   evolutionNotes: z.string().optional().nullable()
 });
 
+const procedureSchema = z.object({
+  patientId: z.string().min(1),
+  tooth: z.string().optional().nullable(),
+  region: z.string().optional().nullable(),
+  procedureName: z.string().min(2),
+  status: z.enum(["PLANNED", "IN_PROGRESS", "COMPLETED"]).default("PLANNED"),
+  notes: z.string().optional().nullable()
+});
+
 recordRouter.get(
   "/patient/:patientId",
   asyncHandler(async (req, res) => {
@@ -38,6 +47,74 @@ recordRouter.get(
         }))
     );
     res.json(records);
+  })
+);
+
+recordRouter.get(
+  "/patient/:patientId/summary",
+  asyncHandler(async (req, res) => {
+    const user = requireUser(req);
+    const patientId = String(req.params.patientId);
+    const patient = await getById<Record<string, unknown>>(collectionNames.patients, patientId);
+    if (!patient || patient.clinicId !== user.clinicId) throw new HttpError(404, "Paciente nao encontrado.");
+    const [records, procedures, documents, appointments] = await Promise.all([
+      db().collection(collectionNames.clinicalRecords).where("clinicId", "==", user.clinicId).where("patientId", "==", patientId).get(),
+      db().collection(collectionNames.clinicalProcedures).where("clinicId", "==", user.clinicId).where("patientId", "==", patientId).get(),
+      db().collection(collectionNames.documentFiles).where("clinicId", "==", user.clinicId).where("patientId", "==", patientId).get(),
+      db().collection(collectionNames.appointments).where("clinicId", "==", user.clinicId).where("patientId", "==", patientId).get()
+    ]);
+    res.json({
+      patient,
+      records: serializeDocs<Record<string, unknown>>(records).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))),
+      procedures: serializeDocs<Record<string, unknown>>(procedures).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))),
+      documents: serializeDocs<Record<string, unknown>>(documents).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))),
+      appointments: serializeDocs<Record<string, unknown>>(appointments).sort((a, b) => String(b.startTime ?? "").localeCompare(String(a.startTime ?? "")))
+    });
+  })
+);
+
+recordRouter.get(
+  "/procedures/patient/:patientId",
+  asyncHandler(async (req, res) => {
+    const user = requireUser(req);
+    const patientId = String(req.params.patientId);
+    const procedures = serializeDocs<Record<string, unknown>>(
+      await db().collection(collectionNames.clinicalProcedures).where("clinicId", "==", user.clinicId).where("patientId", "==", patientId).get()
+    ).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
+    res.json(procedures);
+  })
+);
+
+recordRouter.post(
+  "/procedures",
+  asyncHandler(async (req, res) => {
+    const user = requireUser(req);
+    const data = procedureSchema.parse(req.body);
+    const patient = await getById<Record<string, unknown>>(collectionNames.patients, data.patientId);
+    if (!patient || patient.clinicId !== user.clinicId) throw new HttpError(404, "Paciente nao encontrado.");
+    const procedure = await addDoc(collectionNames.clinicalProcedures, {
+      ...data,
+      dentistId: user.id,
+      clinicId: user.clinicId,
+      createdAt: now(),
+      updatedAt: now()
+    });
+    await logAction({ clinicId: user.clinicId, userId: user.id, action: "CREATE", entity: "ClinicalProcedure", entityId: procedure.id });
+    res.status(201).json(procedure);
+  })
+);
+
+recordRouter.patch(
+  "/procedures/:id/status",
+  asyncHandler(async (req, res) => {
+    const user = requireUser(req);
+    const id = String(req.params.id);
+    const { status } = z.object({ status: z.enum(["PLANNED", "IN_PROGRESS", "COMPLETED"]) }).parse(req.body);
+    const exists = await getById<Record<string, unknown>>(collectionNames.clinicalProcedures, id);
+    if (!exists || exists.clinicId !== user.clinicId) throw new HttpError(404, "Procedimento nao encontrado.");
+    const procedure = await updateDoc(collectionNames.clinicalProcedures, id, { status, updatedAt: now() });
+    await logAction({ clinicId: user.clinicId, userId: user.id, action: "UPDATE_STATUS", entity: "ClinicalProcedure", entityId: id });
+    res.json(procedure);
   })
 );
 
