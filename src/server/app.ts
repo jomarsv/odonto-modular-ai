@@ -1,0 +1,33 @@
+import express from "express";
+import cors from "cors";
+import path from "node:path";
+import { config } from "./config.js";
+import { errorHandler } from "./utils/http.js";
+import { authRouter } from "./routes/auth.routes.js";
+import { patientRouter } from "./routes/patient.routes.js";
+import { appointmentRouter } from "./routes/appointment.routes.js";
+import { recordRouter } from "./routes/record.routes.js";
+import { documentRouter } from "./routes/document.routes.js";
+import { moduleRouter } from "./routes/module.routes.js";
+import { aiRouter } from "./routes/ai.routes.js";
+import { billingRouter } from "./routes/billing.routes.js";
+import { dashboardRouter } from "./routes/dashboard.routes.js";
+
+export const app = express();
+
+app.use(cors());
+app.use(express.json({ limit: "1mb" }));
+app.use("/uploads", express.static(path.resolve(config.uploadDir)));
+
+app.get("/api/health", (_req, res) => res.json({ ok: true, name: "Odonto Modular AI" }));
+app.use("/api/auth", authRouter);
+app.use("/api/dashboard", dashboardRouter);
+app.use("/api/patients", patientRouter);
+app.use("/api/appointments", appointmentRouter);
+app.use("/api/records", recordRouter);
+app.use("/api/documents", documentRouter);
+app.use("/api/modules", moduleRouter);
+app.use("/api/ai", aiRouter);
+app.use("/api/billing", billingRouter);
+
+app.use(errorHandler);

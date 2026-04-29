@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  DENTIST
+  ASSISTANT
+  CLINIC_MANAGER
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELED
+  NO_SHOW
+}
+
+enum ModuleCategory {
+  ADMINISTRATIVE
+  CLINICAL
+  AI
+  FINANCIAL
+  SPECIALTY
+  SECURITY
+}
+
+enum AIPrecisionLevel {
+  BASIC
+  STANDARD
+  ADVANCED
+  SPECIALIST
+}
+
+model User {
+  id              String           @id @default(cuid())
+  name            String
+  email           String           @unique
+  passwordHash    String
+  role            UserRole         @default(DENTIST)
+  clinicId        String?
+  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
+  appointments    Appointment[]    @relation("DentistAppointments")
+  clinicalRecords ClinicalRecord[] @relation("DentistClinicalRecords")
+  documents       DocumentFile[]   @relation("UploadedDocuments")
+  aiUsageLogs     AIUsageLog[]
+  actionLogs      ActionLog[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Clinic {
+  id              String           @id @default(cuid())
+  name            String
+  documentNumber  String?
+  phone           String?
+  email           String?
+  address         String?
+  users           User[]
+  patients        Patient[]
+  appointments    Appointment[]
+  clinicalRecords ClinicalRecord[]
+  documents       DocumentFile[]
+  clinicModules   ClinicModule[]
+  aiUsageLogs     AIUsageLog[]
+  billingEvents   BillingEvent[]
+  actionLogs      ActionLog[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Patient {
+  id              String           @id @default(cuid())
+  clinicId        String
+  clinic          Clinic           @relation(fields: [clinicId], references: [id])
+  fullName        String
+  birthDate       DateTime?
+  phone           String?
+  email           String?
+  cpf             String?
+  address         String?
+  notes           String?
+  consentForAI    Boolean          @default(false)
+  appointments    Appointment[]
+  clinicalRecords ClinicalRecord[]
+  documents       DocumentFile[]
+  aiUsageLogs     AIUsageLog[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([clinicId, fullName])
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  clinicId  String
+  patientId String
+  dentistId String
+  clinic    Clinic            @relation(fields: [clinicId], references: [id])
+  patient   Patient           @relation(fields: [patientId], references: [id])
+  dentist   User              @relation("DentistAppointments", fields: [dentistId], references: [id])
+  startTime DateTime
+  endTime   DateTime
+  status    AppointmentStatus @default(SCHEDULED)
+  notes     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([clinicId, startTime])
+}
+
+model ClinicalRecord {
+  id             String   @id @default(cuid())
+  clinicId       String
+  patientId      String
+  dentistId      String
+  clinic         Clinic   @relation(fields: [clinicId], references: [id])
+  patient        Patient  @relation(fields: [patientId], references: [id])
+  dentist        User     @relation("DentistClinicalRecords", fields: [dentistId], references: [id])
+  anamnesis      String?
+  diagnosisNotes String?
+  treatmentPlan  String?
+  evolutionNotes String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([clinicId, patientId])
+}
+
+model DocumentFile {
+  id           String   @id @default(cuid())
+  clinicId     String
+  patientId    String
+  uploadedById String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id])
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  uploadedBy   User     @relation("UploadedDocuments", fields: [uploadedById], references: [id])
+  fileName     String
+  fileType     String
+  fileUrl      String
+  fileSize     Int
+  createdAt    DateTime @default(now())
+
+  @@index([clinicId, patientId])
+}
+
+model Module {
+  id            String         @id @default(cuid())
+  key           String         @unique
+  name          String
+  description   String
+  category      ModuleCategory
+  basePrice     Decimal        @db.Decimal(10, 2)
+  isActive      Boolean        @default(true)
+  clinicModules ClinicModule[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model ClinicModule {
+  id            String    @id @default(cuid())
+  clinicId      String
+  moduleId      String
+  clinic        Clinic    @relation(fields: [clinicId], references: [id])
+  module        Module    @relation(fields: [moduleId], references: [id])
+  enabled       Boolean   @default(false)
+  activatedAt   DateTime?
+  deactivatedAt DateTime?
+
+  @@unique([clinicId, moduleId])
+}
+
+model AIUsageLog {
+  id             String           @id @default(cuid())
+  clinicId       String
+  userId         String
+  patientId      String?
+  clinic         Clinic           @relation(fields: [clinicId], references: [id])
+  user           User             @relation(fields: [userId], references: [id])
+  patient        Patient?         @relation(fields: [patientId], references: [id])
+  featureKey     String
+  modelName      String
+  precisionLevel AIPrecisionLevel
+  inputTokens    Int
+  outputTokens   Int
+  totalTokens    Int
+  estimatedCost  Decimal          @db.Decimal(10, 4)
+  requestSummary String
+  createdAt      DateTime         @default(now())
+
+  @@index([clinicId, createdAt])
+}
+
+model BillingEvent {
+  id          String   @id @default(cuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id])
+  eventType   String
+  description String
+  amount      Decimal  @db.Decimal(10, 4)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([clinicId, createdAt])
+}
+
+model ActionLog {
+  id        String   @id @default(cuid())
+  clinicId  String
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  clinic    Clinic   @relation(fields: [clinicId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([clinicId, createdAt])
+}
