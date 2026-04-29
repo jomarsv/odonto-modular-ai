@@ -17,7 +17,13 @@ export class ApiClient {
     const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ message: "Erro inesperado." }));
-      throw new Error(body.message ?? "Erro inesperado.");
+      const fallback =
+        response.status === 403
+          ? "Sem permissao ou modulo inativo para esta acao."
+          : response.status === 401
+            ? "Sessao expirada ou credenciais invalidas."
+            : "Erro inesperado.";
+      throw new Error(body.message ?? fallback);
     }
     return response.json() as Promise<T>;
   }

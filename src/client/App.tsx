@@ -50,6 +50,10 @@ const tabs = [
   ["records", "Prontuario"],
   ["documents", "Documentos"],
   ["users", "Equipe"],
+  ["clinic", "Clinica"],
+  ["profile", "Perfil"],
+  ["audit", "Auditoria"],
+  ["account", "Conta"],
   ["modules", "Modulos"],
   ["ai", "Uso de IA"],
   ["billing", "Cobranca"]
@@ -96,6 +100,8 @@ export default function App() {
   const enabledModules = new Set(modules.filter((module) => module.enabled).map((module) => module.key));
   const visibleTabs = tabs.filter(([id]) => {
     if (id === "users") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
+    if (id === "clinic") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
+    if (id === "audit") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
     const required = tabModules[id];
     return !required || required.some((key) => enabledModules.has(key));
   });
@@ -136,6 +142,10 @@ export default function App() {
         {activeTab === "records" && <Records api={api} onSaved={setMessage} />}
         {activeTab === "documents" && <Documents api={api} onSaved={setMessage} />}
         {activeTab === "users" && <Users api={api} onSaved={setMessage} />}
+        {activeTab === "clinic" && <ClinicSettings api={api} session={session} setSession={setSession} onSaved={setMessage} />}
+        {activeTab === "profile" && <Profile api={api} session={session} setSession={setSession} onSaved={setMessage} />}
+        {activeTab === "audit" && <Audit api={api} />}
+        {activeTab === "account" && <AccountStatus api={api} />}
         {activeTab === "modules" && <Modules api={api} onSaved={setMessage} />}
         {activeTab === "ai" && <AIUsage api={api} onSaved={setMessage} />}
         {activeTab === "billing" && <Billing api={api} />}
@@ -464,6 +474,145 @@ function Users({ api, onSaved }: { api: ApiClient; onSaved: (message: string) =>
   );
 }
 
+function ClinicSettings({
+  api,
+  session,
+  setSession,
+  onSaved
+}: {
+  api: ApiClient;
+  session: Session;
+  setSession: (session: Session | null) => void;
+  onSaved: (message: string) => void;
+}) {
+  const [form, setForm] = useState({ name: "", documentNumber: "", phone: "", email: "", address: "" });
+  useEffect(() => {
+    api.get<typeof form & { id: string }>("/clinic/me").then((clinic) =>
+      setForm({
+        name: clinic.name ?? "",
+        documentNumber: clinic.documentNumber ?? "",
+        phone: clinic.phone ?? "",
+        email: clinic.email ?? "",
+        address: clinic.address ?? ""
+      })
+    );
+  }, [api]);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    const clinic = await api.put<Session["clinic"]>("/clinic/me", form);
+    setSession({ ...session, clinic });
+    onSaved("Dados da clinica atualizados.");
+  }
+  return (
+    <Section title="Clinica">
+      <form onSubmit={save} className="panel max-w-2xl space-y-3 p-4">
+        <Field label="Nome"><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+        <Field label="Documento"><input value={form.documentNumber} onChange={(e) => setForm({ ...form, documentNumber: e.target.value })} /></Field>
+        <Field label="Telefone"><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+        <Field label="E-mail"><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+        <Field label="Endereco"><textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
+        <button className="btn-primary">Salvar clinica</button>
+      </form>
+    </Section>
+  );
+}
+
+function Profile({
+  api,
+  session,
+  setSession,
+  onSaved
+}: {
+  api: ApiClient;
+  session: Session;
+  setSession: (session: Session | null) => void;
+  onSaved: (message: string) => void;
+}) {
+  const [name, setName] = useState(session.user.name);
+  const [password, setPassword] = useState({ currentPassword: "", newPassword: "" });
+  async function saveProfile(event: FormEvent) {
+    event.preventDefault();
+    const user = await api.put<Session["user"]>("/profile", { name });
+    setSession({ ...session, user: { ...session.user, ...user } });
+    onSaved("Perfil atualizado.");
+  }
+  async function changePassword(event: FormEvent) {
+    event.preventDefault();
+    await api.post("/profile/password", password);
+    setPassword({ currentPassword: "", newPassword: "" });
+    onSaved("Senha atualizada.");
+  }
+  return (
+    <Section title="Perfil">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <form onSubmit={saveProfile} className="panel space-y-3 p-4">
+          <Field label="Nome"><input required value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label="E-mail"><input disabled value={session.user.email} /></Field>
+          <Field label="Role"><input disabled value={session.user.role} /></Field>
+          <button className="btn-primary">Salvar perfil</button>
+        </form>
+        <form onSubmit={changePassword} className="panel space-y-3 p-4">
+          <Field label="Senha atual"><input required type="password" value={password.currentPassword} onChange={(e) => setPassword({ ...password, currentPassword: e.target.value })} /></Field>
+          <Field label="Nova senha"><input required minLength={8} type="password" value={password.newPassword} onChange={(e) => setPassword({ ...password, newPassword: e.target.value })} /></Field>
+          <button className="btn-primary">Trocar senha</button>
+        </form>
+      </div>
+    </Section>
+  );
+}
+
+function Audit({ api }: { api: ApiClient }) {
+  const [logs, setLogs] = useState<Array<Record<string, any>>>([]);
+  useEffect(() => {
+    api.get<Array<Record<string, any>>>("/audit").then(setLogs);
+  }, [api]);
+  return (
+    <Section title="Auditoria">
+      <div className="panel overflow-hidden">
+        <Table headers={["Data", "Usuario", "Acao", "Entidade"]}>
+          {logs.map((log) => (
+            <tr key={String(log.id)}>
+              <td>{log.createdAt ? new Date(String(log.createdAt)).toLocaleString("pt-BR") : ""}</td>
+              <td>{String(log.user?.name ?? log.userId ?? "")}</td>
+              <td>{String(log.action ?? "")}</td>
+              <td>{String(log.entity ?? "")}</td>
+            </tr>
+          ))}
+        </Table>
+      </div>
+    </Section>
+  );
+}
+
+function AccountStatus({ api }: { api: ApiClient }) {
+  const [data, setData] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    api.get<Record<string, any>>("/account/status").then(setData);
+  }, [api]);
+  if (!data) return <Section title="Conta"><p>Carregando...</p></Section>;
+  return (
+    <Section title="Status da conta">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Usuarios" value={data.usersCount} />
+        <StatCard label="Modulos ativos" value={data.activeModulesCount} />
+        <StatCard label="Tokens IA" value={data.aiTokensThisMonth} />
+        <Price label="Custo mensal" value={data.monthlyPrice} highlight />
+      </div>
+      <div className="panel mt-4 overflow-hidden">
+        <Table headers={["Modulo", "Categoria", "Preco"]}>
+          {(data.activeModules ?? []).map((module: any) => (
+            <tr key={String(module.id)}>
+              <td>{String(module.name)}</td>
+              <td>{String(module.category)}</td>
+              <td>{money(String(module.basePrice ?? 0))}</td>
+            </tr>
+          ))}
+        </Table>
+      </div>
+    </Section>
+  );
+}
+
 function AIUsage({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [logs, setLogs] = useState<Array<Record<string, any>>>([]);
@@ -518,6 +667,10 @@ function Billing({ api }: { api: ApiClient }) {
 
 function Price({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
   return <div className={`panel p-5 ${highlight ? "border-primary-600" : ""}`}><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{money(value)}</p></div>;
+}
+
+function StatCard({ label, value }: { label: string; value: number | string }) {
+  return <div className="panel p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></div>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
