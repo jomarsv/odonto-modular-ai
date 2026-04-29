@@ -3,6 +3,7 @@ import { z } from "zod";
 import { collectionNames, db, getById, now, serializeDocs, setDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { logAction } from "../services/audit.service.js";
+import { createModuleBillingEvent } from "../services/billing.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
 export const moduleRouter = Router();
@@ -38,6 +39,7 @@ moduleRouter.patch(
     const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
     const module = await getById<Record<string, unknown>>(collectionNames.modules, moduleId);
     if (!module) throw new HttpError(404, "Modulo nao encontrado.");
+    const previous = await getById<Record<string, unknown>>(collectionNames.clinicModules, `${user.clinicId}_${module.id}`);
     const clinicModule = await setDoc(collectionNames.clinicModules, `${user.clinicId}_${module.id}`, {
       clinicId: user.clinicId,
       moduleId: module.id,
@@ -52,6 +54,15 @@ moduleRouter.patch(
       entity: "Module",
       entityId: module.id
     });
+    if (previous?.enabled !== enabled) {
+      await createModuleBillingEvent({
+        clinicId: user.clinicId,
+        moduleId: String(module.id),
+        moduleName: String(module.name ?? module.key ?? module.id),
+        enabled,
+        monthlyPrice: Number(module.basePrice ?? 0)
+      });
+    }
     res.json(clinicModule);
   })
 );

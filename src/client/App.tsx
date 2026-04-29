@@ -714,17 +714,57 @@ function AIUsage({ api, onSaved }: { api: ApiClient; onSaved: (message: string) 
 
 function Billing({ api }: { api: ApiClient }) {
   const [estimate, setEstimate] = useState<Record<string, any> | null>(null);
-  useEffect(() => { api.get<Record<string, any>>("/billing/estimate").then(setEstimate); }, [api]);
+  const [events, setEvents] = useState<Array<Record<string, any>>>([]);
+  const [invoice, setInvoice] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    api.get<Record<string, any>>("/billing/estimate").then(setEstimate);
+    api.get<Array<Record<string, any>>>("/billing/events").then(setEvents);
+    api.get<Record<string, any>>("/billing/invoice/current").then(setInvoice);
+  }, [api]);
   if (!estimate) return <Section title="Cobranca"><p>Carregando...</p></Section>;
   return (
-    <Section title="Estimativa de cobranca">
+    <Section title="Fatura estimada">
+      <div className="panel mb-4 p-4 text-sm text-slate-600">
+        <p className="font-semibold text-slate-900">Politica: mensalidade por ciclo, sem pro-rata no MVP.</p>
+        <p>Ativacao cobra o modulo no ciclo atual. Desativacao remove renovacao no proximo ciclo. IA e storage entram como consumo.</p>
+        <p className="mt-2">Ciclo atual: {new Date(String(estimate.cycleStart)).toLocaleDateString("pt-BR")} ate {new Date(String(estimate.cycleEnd)).toLocaleDateString("pt-BR")}</p>
+      </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Price label="Plano base" value={estimate.basePlanPrice} />
-        <Price label="Modulos ativos" value={estimate.activeModulesPrice} />
-        <Price label="Armazenamento" value={estimate.storagePrice} />
+        <Price label="Mensalidade dos modulos" value={estimate.activeModulesPrice} />
+        <Price label="Storage do ciclo" value={estimate.storagePrice} />
         <Price label="Consumo de IA" value={estimate.aiUsagePrice} />
         <Price label="Seguranca" value={estimate.securityPrice} />
         <Price label="Total estimado" value={estimate.monthlyPrice} highlight />
+      </div>
+      {invoice && (
+        <div className="panel mt-4 overflow-hidden">
+          <div className="border-b border-slate-200 p-4">
+            <h3 className="font-semibold">Pre-fatura do ciclo</h3>
+            <p className="text-sm text-slate-500">Status {String(invoice.status)}. Pronta para futura integracao com gateway de pagamento.</p>
+          </div>
+          <Table headers={["Item", "Descricao", "Valor"]}>
+            {(invoice.items ?? []).map((item: any) => (
+              <tr key={String(item.type)}>
+                <td>{String(item.type)}</td>
+                <td>{String(item.description)}</td>
+                <td>{money(String(item.amount ?? 0))}</td>
+              </tr>
+            ))}
+          </Table>
+        </div>
+      )}
+      <div className="panel mt-4 overflow-hidden">
+        <Table headers={["Evento", "Descricao", "Valor", "Data"]}>
+          {events.map((event) => (
+            <tr key={String(event.id)}>
+              <td>{String(event.eventType)}</td>
+              <td>{String(event.description)}</td>
+              <td>{money(String(event.amount ?? 0))}</td>
+              <td>{event.createdAt ? new Date(String(event.createdAt)).toLocaleString("pt-BR") : ""}</td>
+            </tr>
+          ))}
+        </Table>
       </div>
     </Section>
   );

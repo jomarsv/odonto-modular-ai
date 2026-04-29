@@ -276,6 +276,17 @@ monthlyPrice = basePlanPrice + activeModulesPrice + storagePrice + aiUsagePrice 
 
 O MVP nao integra gateway de pagamento. Os eventos de consumo ficam em `BillingEvent`.
 
+Politica de cobranca dos modulos:
+
+- modulos sao cobrados por ciclo mensal;
+- no MVP nao ha pro-rata;
+- ativar modulo cria evento `MODULE_ACTIVATED` e inclui a mensalidade no ciclo atual;
+- desativar modulo cria evento `MODULE_DEACTIVATED` e remove a renovacao no proximo ciclo;
+- IA segue cobranca por consumo em `AI_USAGE`;
+- storage segue estimativa por consumo.
+
+O endpoint `GET /api/billing/invoice/current` gera uma pre-fatura `DRAFT` do ciclo atual, com itens consolidados e eventos do periodo. Essa estrutura prepara a futura integracao com gateway de pagamento.
+
 ## Seguranca e LGPD
 
 Implementado na base:

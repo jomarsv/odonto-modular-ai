@@ -44,10 +44,37 @@ export async function createAIConsumptionBillingEvent(input: {
   });
 }
 
+export async function createModuleBillingEvent(input: {
+  clinicId: string;
+  moduleId: string;
+  moduleName: string;
+  enabled: boolean;
+  monthlyPrice: number;
+}) {
+  await addDoc(collectionNames.billingEvents, {
+    clinicId: input.clinicId,
+    eventType: input.enabled ? "MODULE_ACTIVATED" : "MODULE_DEACTIVATED",
+    description: input.enabled
+      ? `Modulo ativado: ${input.moduleName}. Cobranca mensal aplicada no ciclo atual.`
+      : `Modulo desativado: ${input.moduleName}. Remocao da renovacao no proximo ciclo.`,
+    amount: input.enabled ? input.monthlyPrice : 0,
+    metadata: {
+      moduleId: input.moduleId,
+      moduleName: input.moduleName,
+      billingPolicy: "MONTHLY_CYCLE_NO_PRORATA",
+      effectiveForCurrentCycle: input.enabled,
+      effectiveForNextCycle: !input.enabled
+    },
+    createdAt: now()
+  });
+}
+
 export async function getMonthlyEstimate(clinicId: string) {
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
+  const nextMonthStart = new Date(monthStart);
+  nextMonthStart.setMonth(nextMonthStart.getMonth() + 1);
 
   const [clinicModulesSnapshot, modulesSnapshot, aiUsageSnapshot, documentsSnapshot] = await Promise.all([
     db().collection(collectionNames.clinicModules).where("clinicId", "==", clinicId).where("enabled", "==", true).get(),
@@ -71,6 +98,9 @@ export async function getMonthlyEstimate(clinicId: string) {
   const monthlyPrice = Number((basePlanPrice + activeModulesPrice + storagePrice + aiUsagePrice + securityPrice).toFixed(2));
 
   return {
+    billingPolicy: "MONTHLY_CYCLE_NO_PRORATA",
+    cycleStart: monthStart.toISOString(),
+    cycleEnd: nextMonthStart.toISOString(),
     basePlanPrice,
     activeModulesPrice,
     storagePrice,
