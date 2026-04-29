@@ -1,4 +1,4 @@
-import type { UserRole } from "@prisma/client";
+import type { UserRole } from "./domain.js";
 
 export type AuthUser = {
   id: string;

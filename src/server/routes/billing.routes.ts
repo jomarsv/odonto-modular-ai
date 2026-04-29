@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db.js";
+import { collectionNames, db, serializeDocs } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { getMonthlyEstimate } from "../services/billing.service.js";
 import { asyncHandler, requireUser } from "../utils/http.js";
@@ -19,11 +19,11 @@ billingRouter.get(
   "/events",
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
-    const events = await prisma.billingEvent.findMany({
-      where: { clinicId: user.clinicId },
-      orderBy: { createdAt: "desc" },
-      take: 50
-    });
+    const events = serializeDocs<Record<string, unknown>>(
+      await db().collection(collectionNames.billingEvents).where("clinicId", "==", user.clinicId).get()
+    )
+      .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
+      .slice(0, 50);
     res.json(events);
   })
 );

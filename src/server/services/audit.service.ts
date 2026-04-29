@@ -1,5 +1,4 @@
-import type { Prisma } from "@prisma/client";
-import { prisma } from "../db.js";
+import { addDoc, collectionNames, now } from "../firestore.js";
 
 export async function logAction(input: {
   clinicId: string;
@@ -7,7 +6,7 @@ export async function logAction(input: {
   action: string;
   entity: string;
   entityId?: string;
-  metadata?: Prisma.InputJsonValue;
+  metadata?: Record<string, unknown>;
 }) {
-  await prisma.actionLog.create({ data: input });
+  await addDoc(collectionNames.actionLogs, { ...input, createdAt: now() });
 }

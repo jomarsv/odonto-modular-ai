@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist/client",
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "prisma/schema.prisma"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",

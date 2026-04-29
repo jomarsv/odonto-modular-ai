@@ -1,5 +1,5 @@
-import { AIPrecisionLevel } from "@prisma/client";
-import { prisma } from "../db.js";
+import type { AIPrecisionLevel } from "../domain.js";
+import { addDoc, collectionNames, now } from "../firestore.js";
 import { createAIConsumptionBillingEvent, estimateAICost } from "./billing.service.js";
 
 const disclaimer =
@@ -67,20 +67,19 @@ export async function generateText(input: {
     featureKey: input.featureKey
   });
 
-  const usageLog = await prisma.aIUsageLog.create({
-    data: {
-      clinicId: input.clinicId,
-      userId: input.userId,
-      patientId: input.patientId,
-      featureKey: input.featureKey,
-      modelName,
-      precisionLevel: input.precisionLevel,
-      inputTokens,
-      outputTokens,
-      totalTokens,
-      estimatedCost,
-      requestSummary: input.input.slice(0, 500)
-    }
+  const usageLog = await addDoc(collectionNames.aiUsageLogs, {
+    clinicId: input.clinicId,
+    userId: input.userId,
+    patientId: input.patientId ?? null,
+    featureKey: input.featureKey,
+    modelName,
+    precisionLevel: input.precisionLevel,
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    estimatedCost,
+    requestSummary: input.input.slice(0, 500),
+    createdAt: now()
   });
 
   await createAIConsumptionBillingEvent({

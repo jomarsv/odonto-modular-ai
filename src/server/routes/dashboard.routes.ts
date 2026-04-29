@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db.js";
+import { collectionNames, db, serializeDocs } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { getMonthlyEstimate } from "../services/billing.service.js";
 import { asyncHandler, requireUser } from "../utils/http.js";
@@ -19,23 +19,25 @@ dashboardRouter.get(
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const [patientsCount, todayAppointments, activeModules, aiUsage, billing] = await Promise.all([
-      prisma.patient.count({ where: { clinicId: user.clinicId } }),
-      prisma.appointment.count({ where: { clinicId: user.clinicId, startTime: { gte: start, lte: end } } }),
-      prisma.clinicModule.count({ where: { clinicId: user.clinicId, enabled: true } }),
-      prisma.aIUsageLog.aggregate({
-        where: { clinicId: user.clinicId, createdAt: { gte: monthStart } },
-        _sum: { totalTokens: true, estimatedCost: true }
-      }),
+    const [patients, appointments, modules, aiUsageRows, billing] = await Promise.all([
+      db().collection(collectionNames.patients).where("clinicId", "==", user.clinicId).get(),
+      db().collection(collectionNames.appointments).where("clinicId", "==", user.clinicId).get(),
+      db().collection(collectionNames.clinicModules).where("clinicId", "==", user.clinicId).where("enabled", "==", true).get(),
+      db().collection(collectionNames.aiUsageLogs).where("clinicId", "==", user.clinicId).get(),
       getMonthlyEstimate(user.clinicId)
     ]);
+    const appointmentsRows = serializeDocs<Record<string, unknown>>(appointments);
+    const aiRows = serializeDocs<Record<string, unknown>>(aiUsageRows).filter((item) => new Date(String(item.createdAt)) >= monthStart);
 
     res.json({
-      patientsCount,
-      todayAppointments,
-      activeModules,
-      aiTokensThisMonth: Number(aiUsage._sum.totalTokens ?? 0),
-      aiCostThisMonth: Number(aiUsage._sum.estimatedCost ?? 0),
+      patientsCount: patients.size,
+      todayAppointments: appointmentsRows.filter((item) => {
+        const time = new Date(String(item.startTime));
+        return time >= start && time <= end;
+      }).length,
+      activeModules: modules.size,
+      aiTokensThisMonth: aiRows.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0),
+      aiCostThisMonth: aiRows.reduce((sum, item) => sum + Number(item.estimatedCost ?? 0), 0),
       monthlyPrice: billing.monthlyPrice
     });
   })

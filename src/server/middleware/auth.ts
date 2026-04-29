@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import type { UserRole } from "@prisma/client";
 import { config } from "../config.js";
-import { prisma } from "../db.js";
+import type { UserRole } from "../domain.js";
+import { collectionNames, db, serializeDoc } from "../firestore.js";
 import { HttpError } from "../utils/http.js";
 
 type JwtPayload = {
@@ -16,10 +16,9 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
 
   try {
     const payload = jwt.verify(token, config.jwtSecret) as JwtPayload;
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, name: true, email: true, role: true, clinicId: true }
-    });
+    const user = serializeDoc<{ name: string; email: string; role: UserRole; clinicId?: string }>(
+      await db().collection(collectionNames.users).doc(payload.sub).get()
+    );
     if (!user?.clinicId) throw new HttpError(401, "Usuario sem clinica vinculada.");
     req.user = { ...user, clinicId: user.clinicId };
     return next();

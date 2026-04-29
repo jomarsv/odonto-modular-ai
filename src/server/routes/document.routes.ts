@@ -2,8 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
 import fs from "node:fs";
-import { prisma } from "../db.js";
 import { config } from "../config.js";
+import { addDoc, collectionNames, db, getById, now, serializeDocs } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
@@ -25,10 +25,9 @@ documentRouter.get(
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
     const patientId = String(req.params.patientId);
-    const docs = await prisma.documentFile.findMany({
-      where: { clinicId: user.clinicId, patientId },
-      orderBy: { createdAt: "desc" }
-    });
+    const docs = serializeDocs<Record<string, unknown>>(
+      await db().collection(collectionNames.documentFiles).where("clinicId", "==", user.clinicId).where("patientId", "==", patientId).get()
+    ).sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
     res.json(docs);
   })
 );
@@ -40,19 +39,18 @@ documentRouter.post(
     const user = requireUser(req);
     const patientId = String(req.body.patientId ?? "");
     if (!req.file) throw new HttpError(400, "Arquivo obrigatorio.");
-    const patient = await prisma.patient.findFirst({ where: { id: patientId, clinicId: user.clinicId } });
-    if (!patient) throw new HttpError(404, "Paciente nao encontrado.");
+    const patient = await getById<Record<string, unknown>>(collectionNames.patients, patientId);
+    if (!patient || patient.clinicId !== user.clinicId) throw new HttpError(404, "Paciente nao encontrado.");
 
-    const doc = await prisma.documentFile.create({
-      data: {
-        clinicId: user.clinicId,
-        patientId,
-        uploadedById: user.id,
-        fileName: req.file.originalname,
-        fileType: req.file.mimetype,
-        fileUrl: `/uploads/${path.basename(req.file.path)}`,
-        fileSize: req.file.size
-      }
+    const doc = await addDoc(collectionNames.documentFiles, {
+      clinicId: user.clinicId,
+      patientId,
+      uploadedById: user.id,
+      fileName: req.file.originalname,
+      fileType: req.file.mimetype,
+      fileUrl: `/uploads/${path.basename(req.file.path)}`,
+      fileSize: req.file.size,
+      createdAt: now()
     });
     await logAction({ clinicId: user.clinicId, userId: user.id, action: "UPLOAD", entity: "DocumentFile", entityId: doc.id });
     res.status(201).json(doc);

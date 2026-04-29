@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { AppointmentStatus } from "@prisma/client";
-import { prisma } from "../db.js";
+import { appointmentStatuses } from "../domain.js";
+import { addDoc, collectionNames, db, getById, now, serializeDocs, updateDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
@@ -14,7 +14,7 @@ const appointmentSchema = z.object({
   dentistId: z.string().optional(),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
-  status: z.nativeEnum(AppointmentStatus).default("SCHEDULED"),
+  status: z.enum(appointmentStatuses).default("SCHEDULED"),
   notes: z.string().optional().nullable()
 });
 
@@ -26,11 +26,22 @@ appointmentRouter.get(
     const dentistId = typeof req.query.dentistId === "string" ? req.query.dentistId : undefined;
     const start = date ? new Date(`${date}T00:00:00.000Z`) : undefined;
     const end = date ? new Date(`${date}T23:59:59.999Z`) : undefined;
-    const appointments = await prisma.appointment.findMany({
-      where: { clinicId: user.clinicId, dentistId, startTime: start && end ? { gte: start, lte: end } : undefined },
-      include: { patient: true, dentist: { select: { id: true, name: true } } },
-      orderBy: { startTime: "asc" }
-    });
+    const snapshot = await db().collection(collectionNames.appointments).where("clinicId", "==", user.clinicId).get();
+    const rows = serializeDocs<Record<string, unknown>>(snapshot)
+      .filter((item) => !dentistId || item.dentistId === dentistId)
+      .filter((item) => {
+        if (!start || !end) return true;
+        const time = new Date(String(item.startTime));
+        return time >= start && time <= end;
+      })
+      .sort((a, b) => String(a.startTime ?? "").localeCompare(String(b.startTime ?? "")));
+    const appointments = await Promise.all(
+      rows.map(async (item) => ({
+        ...item,
+        patient: item.patientId ? await getById(collectionNames.patients, String(item.patientId)) : null,
+        dentist: item.dentistId ? await getById(collectionNames.users, String(item.dentistId)) : null
+      }))
+    );
     res.json(appointments);
   })
 );
@@ -40,18 +51,18 @@ appointmentRouter.post(
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
     const data = appointmentSchema.parse(req.body);
-    const patient = await prisma.patient.findFirst({ where: { id: data.patientId, clinicId: user.clinicId } });
-    if (!patient) throw new HttpError(404, "Paciente nao encontrado.");
-    const appointment = await prisma.appointment.create({
-      data: {
-        clinicId: user.clinicId,
-        patientId: data.patientId,
-        dentistId: data.dentistId ?? user.id,
-        startTime: new Date(data.startTime),
-        endTime: new Date(data.endTime),
-        status: data.status,
-        notes: data.notes
-      }
+    const patient = await getById<Record<string, unknown>>(collectionNames.patients, data.patientId);
+    if (!patient || patient.clinicId !== user.clinicId) throw new HttpError(404, "Paciente nao encontrado.");
+    const appointment = await addDoc(collectionNames.appointments, {
+      clinicId: user.clinicId,
+      patientId: data.patientId,
+      dentistId: data.dentistId ?? user.id,
+      startTime: new Date(data.startTime),
+      endTime: new Date(data.endTime),
+      status: data.status,
+      notes: data.notes,
+      createdAt: now(),
+      updatedAt: now()
     });
     await logAction({ clinicId: user.clinicId, userId: user.id, action: "CREATE", entity: "Appointment", entityId: appointment.id });
     res.status(201).json(appointment);
@@ -63,10 +74,10 @@ appointmentRouter.patch(
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
     const id = String(req.params.id);
-    const { status } = z.object({ status: z.nativeEnum(AppointmentStatus) }).parse(req.body);
-    const exists = await prisma.appointment.findFirst({ where: { id, clinicId: user.clinicId } });
-    if (!exists) throw new HttpError(404, "Consulta nao encontrada.");
-    const appointment = await prisma.appointment.update({ where: { id }, data: { status } });
+    const { status } = z.object({ status: z.enum(appointmentStatuses) }).parse(req.body);
+    const exists = await getById<Record<string, unknown>>(collectionNames.appointments, id);
+    if (!exists || exists.clinicId !== user.clinicId) throw new HttpError(404, "Consulta nao encontrada.");
+    const appointment = await updateDoc(collectionNames.appointments, id, { status, updatedAt: now() });
     await logAction({ clinicId: user.clinicId, userId: user.id, action: "STATUS_UPDATE", entity: "Appointment", entityId: appointment.id });
     res.json(appointment);
   })

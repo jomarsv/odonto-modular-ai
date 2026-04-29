@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { prisma } from "../db.js";
+import { collectionNames, db, getById, now, serializeDocs, setDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
@@ -12,16 +12,19 @@ moduleRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
-    const modules = await prisma.module.findMany({
-      where: { isActive: true },
-      include: { clinicModules: { where: { clinicId: user.clinicId } } },
-      orderBy: [{ category: "asc" }, { name: "asc" }]
-    });
+    const [modulesSnapshot, clinicModulesSnapshot] = await Promise.all([
+      db().collection(collectionNames.modules).where("isActive", "==", true).get(),
+      db().collection(collectionNames.clinicModules).where("clinicId", "==", user.clinicId).get()
+    ]);
+    const clinicModules = serializeDocs<Record<string, unknown>>(clinicModulesSnapshot);
+    const modules = serializeDocs<Record<string, unknown>>(modulesSnapshot).sort((a, b) =>
+      `${a.category ?? ""}${a.name ?? ""}`.localeCompare(`${b.category ?? ""}${b.name ?? ""}`)
+    );
     res.json(
       modules.map((module) => ({
         ...module,
-        enabled: module.clinicModules[0]?.enabled ?? false,
-        clinicModuleId: module.clinicModules[0]?.id
+        enabled: clinicModules.find((item) => item.moduleId === module.id)?.enabled ?? false,
+        clinicModuleId: clinicModules.find((item) => item.moduleId === module.id)?.id
       }))
     );
   })
@@ -33,12 +36,14 @@ moduleRouter.patch(
     const user = requireUser(req);
     const moduleId = String(req.params.moduleId);
     const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
-    const module = await prisma.module.findUnique({ where: { id: moduleId } });
+    const module = await getById<Record<string, unknown>>(collectionNames.modules, moduleId);
     if (!module) throw new HttpError(404, "Modulo nao encontrado.");
-    const clinicModule = await prisma.clinicModule.upsert({
-      where: { clinicId_moduleId: { clinicId: user.clinicId, moduleId: module.id } },
-      update: { enabled, activatedAt: enabled ? new Date() : undefined, deactivatedAt: enabled ? null : new Date() },
-      create: { clinicId: user.clinicId, moduleId: module.id, enabled, activatedAt: enabled ? new Date() : null }
+    const clinicModule = await setDoc(collectionNames.clinicModules, `${user.clinicId}_${module.id}`, {
+      clinicId: user.clinicId,
+      moduleId: module.id,
+      enabled,
+      activatedAt: enabled ? now() : null,
+      deactivatedAt: enabled ? null : now()
     });
     await logAction({
       clinicId: user.clinicId,

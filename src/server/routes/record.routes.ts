@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { prisma } from "../db.js";
+import { addDoc, collectionNames, db, getById, now, serializeDocs, updateDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
@@ -22,11 +22,19 @@ recordRouter.get(
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
     const patientId = String(req.params.patientId);
-    const records = await prisma.clinicalRecord.findMany({
-      where: { clinicId: user.clinicId, patientId },
-      include: { dentist: { select: { name: true } } },
-      orderBy: { createdAt: "desc" }
-    });
+    const snapshot = await db()
+      .collection(collectionNames.clinicalRecords)
+      .where("clinicId", "==", user.clinicId)
+      .where("patientId", "==", patientId)
+      .get();
+    const records = await Promise.all(
+      serializeDocs<Record<string, unknown>>(snapshot)
+        .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
+        .map(async (record) => ({
+          ...record,
+          dentist: record.dentistId ? await getById(collectionNames.users, String(record.dentistId)) : null
+        }))
+    );
     res.json(records);
   })
 );
@@ -36,10 +44,14 @@ recordRouter.post(
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
     const data = recordSchema.parse(req.body);
-    const patient = await prisma.patient.findFirst({ where: { id: data.patientId, clinicId: user.clinicId } });
-    if (!patient) throw new HttpError(404, "Paciente nao encontrado.");
-    const record = await prisma.clinicalRecord.create({
-      data: { ...data, dentistId: data.dentistId ?? user.id, clinicId: user.clinicId }
+    const patient = await getById<Record<string, unknown>>(collectionNames.patients, data.patientId);
+    if (!patient || patient.clinicId !== user.clinicId) throw new HttpError(404, "Paciente nao encontrado.");
+    const record = await addDoc(collectionNames.clinicalRecords, {
+      ...data,
+      dentistId: data.dentistId ?? user.id,
+      clinicId: user.clinicId,
+      createdAt: now(),
+      updatedAt: now()
     });
     await logAction({ clinicId: user.clinicId, userId: user.id, action: "CREATE", entity: "ClinicalRecord", entityId: record.id });
     res.status(201).json(record);
@@ -52,9 +64,9 @@ recordRouter.put(
     const user = requireUser(req);
     const id = String(req.params.id);
     const data = recordSchema.partial().parse(req.body);
-    const exists = await prisma.clinicalRecord.findFirst({ where: { id, clinicId: user.clinicId } });
-    if (!exists) throw new HttpError(404, "Prontuario nao encontrado.");
-    const record = await prisma.clinicalRecord.update({ where: { id }, data });
+    const exists = await getById<Record<string, unknown>>(collectionNames.clinicalRecords, id);
+    if (!exists || exists.clinicId !== user.clinicId) throw new HttpError(404, "Prontuario nao encontrado.");
+    const record = await updateDoc(collectionNames.clinicalRecords, id, { ...data, updatedAt: now() });
     await logAction({ clinicId: user.clinicId, userId: user.id, action: "UPDATE", entity: "ClinicalRecord", entityId: record.id });
     res.json(record);
   })

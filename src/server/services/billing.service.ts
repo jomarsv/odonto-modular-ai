@@ -1,5 +1,5 @@
-import { AIPrecisionLevel } from "@prisma/client";
-import { prisma } from "../db.js";
+import type { AIPrecisionLevel } from "../domain.js";
+import { addDoc, collectionNames, db, now, serializeDocs } from "../firestore.js";
 
 const precisionMultipliers: Record<AIPrecisionLevel, number> = {
   BASIC: 1,
@@ -34,14 +34,13 @@ export async function createAIConsumptionBillingEvent(input: {
   totalTokens: number;
   usageLogId: string;
 }) {
-  await prisma.billingEvent.create({
-    data: {
-      clinicId: input.clinicId,
-      eventType: "AI_USAGE",
-      description: `Consumo de IA: ${input.featureKey}`,
-      amount: input.amount,
-      metadata: { usageLogId: input.usageLogId, totalTokens: input.totalTokens }
-    }
+  await addDoc(collectionNames.billingEvents, {
+    clinicId: input.clinicId,
+    eventType: "AI_USAGE",
+    description: `Consumo de IA: ${input.featureKey}`,
+    amount: input.amount,
+    metadata: { usageLogId: input.usageLogId, totalTokens: input.totalTokens },
+    createdAt: now()
   });
 }
 
@@ -50,27 +49,25 @@ export async function getMonthlyEstimate(clinicId: string) {
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const [clinicModules, aiUsage, documents] = await Promise.all([
-    prisma.clinicModule.findMany({
-      where: { clinicId, enabled: true, module: { isActive: true } },
-      include: { module: true }
-    }),
-    prisma.aIUsageLog.aggregate({
-      where: { clinicId, createdAt: { gte: monthStart } },
-      _sum: { estimatedCost: true, totalTokens: true }
-    }),
-    prisma.documentFile.aggregate({
-      where: { clinicId },
-      _sum: { fileSize: true }
-    })
+  const [clinicModulesSnapshot, modulesSnapshot, aiUsageSnapshot, documentsSnapshot] = await Promise.all([
+    db().collection(collectionNames.clinicModules).where("clinicId", "==", clinicId).where("enabled", "==", true).get(),
+    db().collection(collectionNames.modules).where("isActive", "==", true).get(),
+    db().collection(collectionNames.aiUsageLogs).where("clinicId", "==", clinicId).get(),
+    db().collection(collectionNames.documentFiles).where("clinicId", "==", clinicId).get()
   ]);
+  const modules = serializeDocs<Record<string, unknown>>(modulesSnapshot);
+  const clinicModules = serializeDocs<Record<string, unknown>>(clinicModulesSnapshot)
+    .map((item) => ({ ...item, module: modules.find((module) => module.id === item.moduleId) }))
+    .filter((item) => item.module);
+  const aiUsageRows = serializeDocs<Record<string, unknown>>(aiUsageSnapshot).filter((item) => new Date(String(item.createdAt)) >= monthStart);
+  const documentRows = serializeDocs<Record<string, unknown>>(documentsSnapshot);
 
   const basePlanPrice = 199;
-  const activeModulesPrice = clinicModules.reduce((sum, item) => sum + Number(item.module.basePrice), 0);
-  const aiUsagePrice = Number(aiUsage._sum.estimatedCost ?? 0);
-  const storageMb = Number(documents._sum.fileSize ?? 0) / 1024 / 1024;
+  const activeModulesPrice = clinicModules.reduce((sum, item) => sum + Number(item.module?.basePrice ?? 0), 0);
+  const aiUsagePrice = aiUsageRows.reduce((sum, item) => sum + Number(item.estimatedCost ?? 0), 0);
+  const storageMb = documentRows.reduce((sum, item) => sum + Number(item.fileSize ?? 0), 0) / 1024 / 1024;
   const storagePrice = Number((storageMb * 0.05).toFixed(2));
-  const securityPrice = clinicModules.some((item) => item.module.key === "security-advanced") ? 49.9 : 0;
+  const securityPrice = clinicModules.some((item) => item.module?.key === "security-advanced") ? 49.9 : 0;
   const monthlyPrice = Number((basePlanPrice + activeModulesPrice + storagePrice + aiUsagePrice + securityPrice).toFixed(2));
 
   return {
@@ -80,7 +77,7 @@ export async function getMonthlyEstimate(clinicId: string) {
     aiUsagePrice,
     securityPrice,
     monthlyPrice,
-    aiTokensThisMonth: Number(aiUsage._sum.totalTokens ?? 0),
+    aiTokensThisMonth: aiUsageRows.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0),
     activeModules: clinicModules.map((item) => item.module)
   };
 }
