@@ -4,7 +4,6 @@
   "outputDirectory": "dist/client",
   "functions": {
     "api/index.ts": {
-      "runtime": "nodejs22.x",
       "includeFiles": "prisma/schema.prisma"
     }
   },
