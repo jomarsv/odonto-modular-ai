@@ -66,7 +66,162 @@ Login demo:
 - `npm run typecheck`: valida TypeScript
 - `npm run prisma:generate`: gera Prisma Client
 - `npm run prisma:migrate`: cria/aplica migracoes locais
+- `npm run prisma:migrate:deploy`: aplica migracoes pendentes em producao
 - `npm run prisma:seed`: cria dados demo e modulos iniciais
+
+## Banco de producao na Vercel
+
+O app usa PostgreSQL via Prisma. A conexao com o banco e lida pelo Prisma em `prisma/schema.prisma`:
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+Em producao, `DATABASE_URL` precisa existir nas variaveis de ambiente do projeto Vercel. Sem essa variavel, rotas que acessam o banco, como `/api/auth/login`, retornam erro interno.
+
+### 1. Criar um PostgreSQL de producao
+
+Use um provedor PostgreSQL gerenciado, por exemplo:
+
+- Vercel Postgres ou Neon via Vercel Marketplace
+- Neon
+- Supabase
+- Railway
+- Render
+- AWS RDS
+
+Crie um banco para producao e copie a connection string no formato PostgreSQL:
+
+```text
+postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public&sslmode=require
+```
+
+Nao use a URL local `localhost` em producao. A Vercel precisa acessar um host publico ou gerenciado.
+
+### 2. Configurar variaveis na Vercel
+
+Pelo dashboard:
+
+1. Acesse o projeto `odonto-modular-ai` na Vercel.
+2. Abra `Settings` > `Environment Variables`.
+3. Adicione as variaveis abaixo em `Production`.
+4. Salve e faca um novo deploy para o runtime receber as variaveis.
+
+Variaveis obrigatorias em producao:
+
+```text
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public&sslmode=require
+JWT_SECRET=uma-string-longa-aleatoria-e-secreta
+AI_PROVIDER=mock
+AI_MODEL_BASIC=mock-basic
+AI_MODEL_STANDARD=mock-standard
+AI_MODEL_ADVANCED=mock-advanced
+AI_MODEL_SPECIALIST=mock-specialist
+```
+
+Variaveis opcionais:
+
+```text
+UPLOAD_DIR=/tmp/uploads
+PORT=4000
+```
+
+Observacoes:
+
+- `UPLOAD_DIR` pode ser omitida na Vercel. O app usa `/tmp/uploads` automaticamente quando detecta `VERCEL`.
+- `PORT` pode ser omitida na Vercel. Ela e relevante apenas para execucao local com `npm run start`.
+- `JWT_SECRET` deve ser diferente do valor de exemplo.
+
+Tambem e possivel configurar via Vercel CLI:
+
+```bash
+npx vercel@latest env add DATABASE_URL production
+npx vercel@latest env add JWT_SECRET production
+npx vercel@latest env add AI_PROVIDER production
+npx vercel@latest env add AI_MODEL_BASIC production
+npx vercel@latest env add AI_MODEL_STANDARD production
+npx vercel@latest env add AI_MODEL_ADVANCED production
+npx vercel@latest env add AI_MODEL_SPECIALIST production
+```
+
+Depois de alterar variaveis:
+
+```bash
+npx vercel@latest --prod
+```
+
+### 3. Rodar migracoes em producao
+
+Com `DATABASE_URL` apontando para o banco de producao, rode:
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate:deploy
+```
+
+Exemplo local no PowerShell, sem salvar credenciais no Git:
+
+```powershell
+$env:DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public&sslmode=require"
+npm run prisma:migrate:deploy
+```
+
+`prisma migrate deploy` aplica migrations existentes e e o comando adequado para ambiente de producao. Use `prisma migrate dev` apenas em desenvolvimento local.
+
+### 4. Rodar seed de producao
+
+Depois das migracoes:
+
+```bash
+npm run prisma:seed
+```
+
+Exemplo local no PowerShell:
+
+```powershell
+$env:DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public&sslmode=require"
+npm run prisma:seed
+```
+
+O seed cria:
+
+- modulos iniciais;
+- clinica demo;
+- usuario demo `dentista@demo.com`;
+- senha demo `demo1234`;
+- paciente, consulta e prontuario de exemplo.
+
+Em um ambiente real, troque a senha demo ou remova o usuario demo depois da validacao inicial.
+
+### 5. Testar producao
+
+Depois de configurar variaveis, aplicar migrations, rodar seed e redeployar:
+
+```bash
+curl https://odonto-modular-ai.vercel.app/api/health
+```
+
+Depois acesse:
+
+```text
+https://odonto-modular-ai.vercel.app
+```
+
+Login demo:
+
+```text
+dentista@demo.com
+demo1234
+```
+
+Se o login ainda falhar, verifique os logs:
+
+```bash
+npx vercel@latest logs https://odonto-modular-ai.vercel.app --no-follow --level error --since 10m --expand
+```
 
 ## Modulos iniciais
 
