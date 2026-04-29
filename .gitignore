@@ -5,3 +5,5 @@ uploads
 *.log
 
 .vercel
+*-firebase-adminsdk-*.json
+service-account*.json
