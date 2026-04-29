@@ -9,10 +9,39 @@ import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 export const moduleRouter = Router();
 moduleRouter.use(authenticate);
 
+const availableModules = [
+  ["patients", "Pacientes", "Cadastro, busca e perfil de pacientes.", "CLINICAL", 0],
+  ["appointments", "Agenda", "Consultas, filtros e status de atendimento.", "ADMINISTRATIVE", 0],
+  ["records", "Prontuario", "Prontuario odontologico basico e historico clinico.", "CLINICAL", 0],
+  ["documents", "Documentos", "Upload logico de documentos e imagens.", "ADMINISTRATIVE", 39.9],
+  ["ai-basic", "IA Basica", "Mensagens e resumos simples com consumo medido.", "AI", 79.9],
+  ["ai-advanced", "IA Avancada", "Relatorios mais detalhados e contexto ampliado.", "AI", 149.9],
+  ["exam-images-ai", "IA para imagens de exames", "Upload de imagens odontologicas e analise assistida por IA.", "AI", 199.9],
+  ["billing", "Cobranca", "Estimativa mensal por modulos e consumo.", "FINANCIAL", 0],
+  ["security-advanced", "Seguranca avancada", "Base futura para MFA, trilhas e politicas.", "SECURITY", 49.9]
+] as const;
+
+async function ensureAvailableModules() {
+  await Promise.all(
+    availableModules.map(([key, name, description, category, basePrice]) =>
+      setDoc(collectionNames.modules, key, {
+        key,
+        name,
+        description,
+        category,
+        basePrice,
+        isActive: true,
+        updatedAt: now()
+      })
+    )
+  );
+}
+
 moduleRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
+    await ensureAvailableModules();
     const [modulesSnapshot, clinicModulesSnapshot] = await Promise.all([
       db().collection(collectionNames.modules).where("isActive", "==", true).get(),
       db().collection(collectionNames.clinicModules).where("clinicId", "==", user.clinicId).get()

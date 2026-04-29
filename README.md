@@ -218,6 +218,7 @@ npx vercel@latest logs https://odonto-modular-ai.vercel.app --no-follow --level 
 - Documentos
 - IA Basica
 - IA Avancada
+- IA para imagens de exames
 - Cobranca
 - Seguranca avancada
 
@@ -269,12 +270,26 @@ Funcoes disponiveis:
 - `record-summary`
 - `clinical-report`
 - `patient-guidance`
+- `exam-image-analysis`
 
 Se nao houver provider real configurado, o servico usa mock seguro, estima tokens, calcula custo, grava `AIUsageLog` e cria `BillingEvent`.
 
 Aviso exibido em conteudos clinicos:
 
 > Conteudo gerado por inteligencia artificial para apoio profissional. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.
+
+## Exames por imagem com IA
+
+O modulo `exam-images-ai` adiciona a tela `Exames IA`, com:
+
+- upload de imagens odontologicas por paciente;
+- tipo de exame e pergunta clinica;
+- listagem de imagens por paciente;
+- analise assistida por IA;
+- registro de consumo em `AIUsageLog`;
+- evento de cobranca em `BillingEvent`.
+
+No MVP, a analise de imagem e mock segura: o sistema ainda nao interpreta pixels reais nem substitui laudo profissional. A arquitetura esta pronta para trocar o mock por um provider multimodal no servico de IA.
 
 ## Cobranca
 
@@ -423,6 +438,7 @@ src/
 ## Limitacoes do MVP
 
 - A IA real ainda nao esta conectada a um provider externo.
+- A analise de imagens de exames ainda e simulada; nao realiza diagnostico por visao computacional real.
 - Upload usa armazenamento local em desenvolvimento e `/tmp` em Vercel; arquivos nao sao persistentes entre execucoes serverless.
 - Nao ha gateway de pagamento.
 - O checkout de assinatura ainda e mock; nao captura cartao nem boleto.

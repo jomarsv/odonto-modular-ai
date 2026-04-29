@@ -8,6 +8,7 @@ const modules = [
   ["documents", "Documentos", "Upload logico de documentos e imagens.", "ADMINISTRATIVE", 39.9],
   ["ai-basic", "IA Basica", "Mensagens e resumos simples com consumo medido.", "AI", 79.9],
   ["ai-advanced", "IA Avancada", "Relatorios mais detalhados e contexto ampliado.", "AI", 149.9],
+  ["exam-images-ai", "IA para imagens de exames", "Upload de imagens odontologicas e analise assistida por IA.", "AI", 199.9],
   ["billing", "Cobranca", "Estimativa mensal por modulos e consumo.", "FINANCIAL", 0],
   ["security-advanced", "Seguranca avancada", "Base futura para MFA, trilhas e politicas.", "SECURITY", 49.9]
 ] as const;

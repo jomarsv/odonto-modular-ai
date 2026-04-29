@@ -8,7 +8,8 @@ const disclaimer =
 const featureLabels: Record<string, string> = {
   "record-summary": "Resumo do prontuario",
   "clinical-report": "Relatorio clinico simples",
-  "patient-guidance": "Mensagem de orientacao ao paciente"
+  "patient-guidance": "Mensagem de orientacao ao paciente",
+  "exam-image-analysis": "Analise de imagem de exame odontologico"
 };
 
 function modelForPrecision(level: AIPrecisionLevel) {
@@ -33,6 +34,9 @@ function buildPrompt(input: { featureKey: string; precisionLevel: AIPrecisionLev
 
 function mockGenerate(featureKey: string, precisionLevel: AIPrecisionLevel, input: string) {
   const intro = featureLabels[featureKey] ?? "Apoio odontologico";
+  if (featureKey === "exam-image-analysis") {
+    return `${intro}\n\nAnalise simulada de exame por imagem.\n\nResumo: a imagem foi registrada para triagem e apoio profissional. Como este MVP ainda nao executa visao computacional real, o resultado considera metadados, tipo de exame e observacoes informadas.\n\nPontos de atencao:\n- Conferir qualidade, enquadramento e identificacao do paciente.\n- Validar achados diretamente na imagem original.\n- Registrar interpretacao final no prontuario somente apos revisao profissional.\n\nBase analisada: ${input.slice(0, 900)}\n\n${disclaimer}`;
+  }
   const detail =
     precisionLevel === "BASIC"
       ? "Versao objetiva com foco nos pontos essenciais."

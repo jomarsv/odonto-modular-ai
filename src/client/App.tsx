@@ -54,12 +54,27 @@ type DocumentFile = {
   createdAt: string;
 };
 
+type ExamImage = {
+  id: string;
+  patientId: string;
+  examType: string;
+  clinicalQuestion?: string | null;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  fileSize: number;
+  analysisStatus: string;
+  analysisResult?: string | null;
+  createdAt: string;
+};
+
 const tabs = [
   ["dashboard", "Dashboard"],
   ["patients", "Pacientes"],
   ["appointments", "Agenda"],
   ["records", "Prontuario"],
   ["documents", "Documentos"],
+  ["examImages", "Exames IA"],
   ["users", "Equipe"],
   ["clinic", "Clinica"],
   ["profile", "Perfil"],
@@ -75,6 +90,7 @@ const tabModules: Partial<Record<(typeof tabs)[number][0], string[]>> = {
   appointments: ["appointments"],
   records: ["records"],
   documents: ["documents"],
+  examImages: ["exam-images-ai"],
   ai: ["ai-basic", "ai-advanced"],
   billing: ["billing"]
 };
@@ -152,6 +168,7 @@ export default function App() {
         {activeTab === "appointments" && <Appointments api={api} onSaved={setMessage} />}
         {activeTab === "records" && <Records api={api} onSaved={setMessage} />}
         {activeTab === "documents" && <Documents api={api} onSaved={setMessage} />}
+        {activeTab === "examImages" && <ExamImages api={api} onSaved={setMessage} />}
         {activeTab === "users" && <Users api={api} onSaved={setMessage} />}
         {activeTab === "clinic" && <ClinicSettings api={api} session={session} setSession={setSession} onSaved={setMessage} />}
         {activeTab === "profile" && <Profile api={api} session={session} setSession={setSession} onSaved={setMessage} />}
@@ -476,6 +493,78 @@ function Documents({ api, onSaved }: { api: ApiClient; onSaved: (message: string
         <button className="btn-primary">Enviar</button>
       </form>
       <div className="panel overflow-hidden"><Table headers={["Arquivo", "Tipo", "Tamanho", "Data"]}>{documents.map((d) => <tr key={d.id}><td><a className="text-primary-700" href={d.fileUrl} target="_blank">{d.fileName}</a></td><td>{d.fileType}</td><td>{Math.round(d.fileSize / 1024)} KB</td><td>{new Date(d.createdAt).toLocaleString("pt-BR")}</td></tr>)}</Table></div>
+    </Section>
+  );
+}
+
+function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [exams, setExams] = useState<ExamImage[]>([]);
+  const [patientId, setPatientId] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [form, setForm] = useState({ examType: "Radiografia panoramica", clinicalQuestion: "", precisionLevel: "SPECIALIST" });
+  const [selectedResult, setSelectedResult] = useState("");
+  useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
+  const load = () => {
+    if (patientId) api.get<ExamImage[]>(`/exam-images/patient/${patientId}`).then(setExams);
+  };
+  useEffect(load, [patientId, api]);
+  async function upload(event: FormEvent) {
+    event.preventDefault();
+    if (!file) return;
+    const body = new FormData();
+    body.set("patientId", patientId);
+    body.set("examType", form.examType);
+    body.set("clinicalQuestion", form.clinicalQuestion);
+    body.set("file", file);
+    await api.upload<ExamImage>("/exam-images", body);
+    setFile(null);
+    onSaved("Imagem de exame enviada.");
+    load();
+  }
+  async function analyze(examId: string) {
+    const response = await api.post<{ exam: ExamImage; analysis: { text: string } }>(`/exam-images/${examId}/analyze`, {
+      precisionLevel: form.precisionLevel,
+      clinicalQuestion: form.clinicalQuestion
+    });
+    setSelectedResult(response.analysis.text);
+    onSaved("Analise de imagem registrada.");
+    load();
+  }
+  return (
+    <Section title="Exames por imagem IA">
+      <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
+        <form onSubmit={upload} className="panel space-y-3 p-4">
+          <Field label="Paciente"><select required value={patientId} onChange={(e) => setPatientId(e.target.value)}><option value="">Selecione</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}</select></Field>
+          <Field label="Tipo de exame"><select value={form.examType} onChange={(e) => setForm({ ...form, examType: e.target.value })}><option>Radiografia panoramica</option><option>Radiografia periapical</option><option>Tomografia odontologica</option><option>Foto intraoral</option><option>Outro exame de imagem</option></select></Field>
+          <Field label="Pergunta clinica"><textarea rows={4} value={form.clinicalQuestion} onChange={(e) => setForm({ ...form, clinicalQuestion: e.target.value })} /></Field>
+          <Field label="Precisao da analise"><select value={form.precisionLevel} onChange={(e) => setForm({ ...form, precisionLevel: e.target.value })}>{["STANDARD", "ADVANCED", "SPECIALIST"].map((level) => <option key={level}>{level}</option>)}</select></Field>
+          <Field label="Imagem"><input required type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
+          <button className="btn-primary">Enviar imagem</button>
+          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Conteudo gerado por inteligencia artificial para apoio profissional. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
+        </form>
+        <div className="space-y-4">
+          <div className="panel overflow-hidden">
+            <Table headers={["Exame", "Status", "Imagem", ""]}>
+              {exams.map((exam) => (
+                <tr key={exam.id}>
+                  <td><p className="font-medium">{exam.examType}</p><p className="text-xs text-slate-500">{exam.fileName}</p></td>
+                  <td>{exam.analysisStatus}</td>
+                  <td><a className="text-primary-700" href={exam.fileUrl} target="_blank">Abrir</a></td>
+                  <td><button className="btn-secondary" onClick={() => analyze(exam.id)}>Analisar</button></td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+          {selectedResult && <pre className="panel whitespace-pre-wrap p-4 text-sm">{selectedResult}</pre>}
+          {exams.filter((exam) => exam.analysisResult).map((exam) => (
+            <div key={`${exam.id}-analysis`} className="panel p-4 text-sm">
+              <p className="font-semibold">{exam.examType}</p>
+              <pre className="mt-2 whitespace-pre-wrap text-slate-700">{exam.analysisResult}</pre>
+            </div>
+          ))}
+        </div>
+      </div>
     </Section>
   );
 }
