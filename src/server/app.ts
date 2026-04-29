@@ -22,6 +22,7 @@ import { subscriptionRouter } from "./routes/subscription.routes.js";
 export const app = express();
 
 app.use(cors());
+app.use("/api/subscription/stripe/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "1mb" }));
 app.use("/uploads", express.static(path.resolve(config.uploadDir)));
 

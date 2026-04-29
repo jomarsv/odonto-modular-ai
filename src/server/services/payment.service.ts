@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import Stripe from "stripe";
 import { config } from "../config.js";
 import { addDoc, collectionNames, db, getById, now, serializeDoc, serializeDocs, setDoc } from "../firestore.js";
 import { getMonthlyEstimate } from "./billing.service.js";
@@ -29,6 +30,19 @@ function nextCycle() {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
+function stripeClient() {
+  if (!config.stripeSecretKey) throw new Error("STRIPE_SECRET_KEY nao configurada.");
+  return new Stripe(config.stripeSecretKey);
+}
+
+function amountToCents(amount: number) {
+  return Math.max(50, Math.round(amount * 100));
+}
+
+function centsToAmount(cents?: number | null) {
+  return Number(((cents ?? 0) / 100).toFixed(2));
+}
+
 export async function getClinicSubscription(clinicId: string) {
   const rows = serializeDocs<Subscription>(
     await db().collection(collectionNames.subscriptions).where("clinicId", "==", clinicId).get()
@@ -37,11 +51,51 @@ export async function getClinicSubscription(clinicId: string) {
   return rows[0] ?? null;
 }
 
-export async function createSubscriptionCheckout(input: { clinicId: string; userId: string }) {
+export async function createSubscriptionCheckout(input: { clinicId: string; userId: string; userEmail?: string }) {
   const estimate = await getMonthlyEstimate(input.clinicId);
   const { start, end } = nextCycle();
-  const providerSessionId = `mock_checkout_${randomUUID()}`;
-  const checkoutUrl = `${config.appBaseUrl}/billing/mock-checkout?session=${providerSessionId}`;
+  let providerSessionId = `mock_checkout_${randomUUID()}`;
+  let checkoutUrl = `${config.appBaseUrl}/billing/mock-checkout?session=${providerSessionId}`;
+  let providerCustomerId = `mock_customer_${input.clinicId}`;
+
+  if (config.paymentProvider === "stripe") {
+    const session = await stripeClient().checkout.sessions.create({
+      mode: "subscription",
+      customer_email: input.userEmail,
+      success_url: `${config.appBaseUrl}?checkout=success`,
+      cancel_url: `${config.appBaseUrl}?checkout=cancelled`,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "brl",
+            unit_amount: amountToCents(estimate.monthlyPrice),
+            recurring: { interval: "month" },
+            product_data: {
+              name: "Odonto Modular AI - Assinatura mensal",
+              description: "Plano base, modulos ativos e consumos estimados do ciclo."
+            }
+          }
+        }
+      ],
+      metadata: {
+        clinicId: input.clinicId,
+        userId: input.userId,
+        billingPolicy: estimate.billingPolicy,
+        cycleStart: start,
+        cycleEnd: end
+      },
+      subscription_data: {
+        metadata: {
+          clinicId: input.clinicId,
+          billingPolicy: estimate.billingPolicy
+        }
+      }
+    });
+    providerSessionId = session.id;
+    checkoutUrl = session.url ?? checkoutUrl;
+    providerCustomerId = typeof session.customer === "string" ? session.customer : "";
+  }
 
   const checkout = await addDoc(collectionNames.paymentCheckoutSessions, {
     clinicId: input.clinicId,
@@ -69,7 +123,7 @@ export async function createSubscriptionCheckout(input: { clinicId: string; user
     currentPeriodEnd: end,
     monthlyAmount: estimate.monthlyPrice,
     currency: "BRL",
-    providerCustomerId: `mock_customer_${input.clinicId}`,
+    providerCustomerId,
     providerSubscriptionId: null,
     checkoutUrl,
     updatedAt: now(),
@@ -79,7 +133,7 @@ export async function createSubscriptionCheckout(input: { clinicId: string; user
   await addDoc(collectionNames.billingEvents, {
     clinicId: input.clinicId,
     eventType: "SUBSCRIPTION_CHECKOUT_CREATED",
-    description: "Checkout de assinatura criado em modo mock.",
+    description: config.paymentProvider === "stripe" ? "Checkout de assinatura criado no Stripe." : "Checkout de assinatura criado em modo mock.",
     amount: estimate.monthlyPrice,
     metadata: { checkoutSessionId: checkout.id, provider: config.paymentProvider },
     createdAt: now()
@@ -205,4 +259,84 @@ export async function processPaymentWebhook(input: {
   });
 
   return { duplicate: false, subscription };
+}
+
+export async function processStripeWebhook(rawBody: Buffer, signature?: string) {
+  if (!config.stripeWebhookSecret) throw new Error("STRIPE_WEBHOOK_SECRET nao configurada.");
+  if (!signature) throw new Error("Assinatura Stripe ausente.");
+
+  const event = stripeClient().webhooks.constructEvent(rawBody, signature, config.stripeWebhookSecret);
+  const normalized = normalizeStripeEvent(event);
+  if (!normalized) {
+    await setDoc(collectionNames.paymentWebhookEvents, event.id, {
+      provider: "stripe",
+      eventType: event.type,
+      status: "IGNORED",
+      amount: 0,
+      metadata: {},
+      createdAt: now(),
+      processedAt: now()
+    });
+    return { ignored: true, eventId: event.id, eventType: event.type };
+  }
+
+  return processPaymentWebhook(normalized);
+}
+
+function normalizeStripeEvent(event: Stripe.Event) {
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const clinicId = session.metadata?.clinicId;
+    if (!clinicId) return null;
+    return {
+      eventId: event.id,
+      eventType: "checkout.completed",
+      clinicId,
+      provider: "stripe",
+      amount: centsToAmount(session.amount_total),
+      metadata: {
+        providerSessionId: session.id,
+        providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+        providerSubscriptionId: typeof session.subscription === "string" ? session.subscription : undefined
+      }
+    };
+  }
+
+  if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const metadata = invoice.parent?.subscription_details?.metadata ?? {};
+    const clinicId = metadata.clinicId;
+    if (!clinicId) return null;
+    return {
+      eventId: event.id,
+      eventType: event.type,
+      clinicId,
+      provider: "stripe",
+      amount: centsToAmount(invoice.amount_paid || invoice.amount_due),
+      metadata: {
+        providerInvoiceId: invoice.id,
+        providerCustomerId: typeof invoice.customer === "string" ? invoice.customer : undefined,
+        providerSubscriptionId: invoice.parent?.subscription_details?.subscription
+      }
+    };
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object as Stripe.Subscription;
+    const clinicId = subscription.metadata?.clinicId;
+    if (!clinicId) return null;
+    return {
+      eventId: event.id,
+      eventType: event.type,
+      clinicId,
+      provider: "stripe",
+      amount: 0,
+      metadata: {
+        providerSubscriptionId: subscription.id,
+        providerCustomerId: typeof subscription.customer === "string" ? subscription.customer : undefined
+      }
+    };
+  }
+
+  return null;
 }

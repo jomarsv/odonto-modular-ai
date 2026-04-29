@@ -9,5 +9,7 @@ export const config = {
   aiProvider: process.env.AI_PROVIDER ?? "mock",
   paymentProvider: process.env.PAYMENT_PROVIDER ?? "mock",
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? "",
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173"
 };

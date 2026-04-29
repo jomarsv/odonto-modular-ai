@@ -102,6 +102,8 @@ AI_MODEL_ADVANCED=mock-advanced
 AI_MODEL_SPECIALIST=mock-specialist
 PAYMENT_PROVIDER=mock
 PAYMENT_WEBHOOK_SECRET=uma-string-secreta-para-webhooks
+STRIPE_SECRET_KEY=sk_live_ou_sk_test
+STRIPE_WEBHOOK_SECRET=whsec_...
 APP_BASE_URL=https://odonto-modular-ai.vercel.app
 ```
 
@@ -139,6 +141,8 @@ npx vercel@latest env add AI_MODEL_ADVANCED production
 npx vercel@latest env add AI_MODEL_SPECIALIST production
 npx vercel@latest env add PAYMENT_PROVIDER production
 npx vercel@latest env add PAYMENT_WEBHOOK_SECRET production
+npx vercel@latest env add STRIPE_SECRET_KEY production
+npx vercel@latest env add STRIPE_WEBHOOK_SECRET production
 npx vercel@latest env add APP_BASE_URL production
 ```
 
@@ -300,6 +304,8 @@ A base de assinatura ja existe sem prender o app a um gateway especifico. O prov
 ```text
 PAYMENT_PROVIDER=mock
 PAYMENT_WEBHOOK_SECRET=uma-string-secreta-para-webhooks
+STRIPE_SECRET_KEY=sk_live_ou_sk_test
+STRIPE_WEBHOOK_SECRET=whsec_...
 APP_BASE_URL=https://odonto-modular-ai.vercel.app
 ```
 
@@ -345,6 +351,34 @@ Eventos reconhecidos inicialmente:
 - assinatura cancelada: `subscription.canceled`, `subscription.cancelled`, `customer.subscription.deleted`.
 
 A tela `Cobranca` mostra o status da assinatura e permite criar/ativar checkout mock. Para integrar Stripe, Mercado Pago ou outro gateway, implemente um provider real mantendo o contrato do servico em `src/server/services/payment.service.ts` e converta webhooks externos em eventos internos no Firestore.
+
+### Stripe
+
+Para usar Stripe como gateway real:
+
+1. Configure as variaveis na Vercel:
+
+```text
+PAYMENT_PROVIDER=stripe
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+APP_BASE_URL=https://odonto-modular-ai.vercel.app
+```
+
+2. No Stripe Dashboard, crie um endpoint de webhook apontando para:
+
+```text
+https://odonto-modular-ai.vercel.app/api/subscription/stripe/webhook
+```
+
+3. Habilite estes eventos:
+
+- `checkout.session.completed`
+- `invoice.paid`
+- `invoice.payment_failed`
+- `customer.subscription.deleted`
+
+Quando `PAYMENT_PROVIDER=stripe`, o endpoint `POST /api/subscription/checkout` cria uma Stripe Checkout Session em modo `subscription`, com valor mensal calculado pela pre-fatura atual da clinica. O webhook Stripe valida a assinatura `stripe-signature`, normaliza o evento e grava `paymentWebhookEvents`, `subscriptions` e `billingEvents`.
 
 ## Seguranca e LGPD
 
