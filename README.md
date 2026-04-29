@@ -101,6 +101,7 @@ AI_MODEL_STANDARD=mock-standard
 AI_MODEL_ADVANCED=mock-advanced
 AI_MODEL_SPECIALIST=mock-specialist
 PAYMENT_PROVIDER=mock
+PAYMENT_WEBHOOK_SECRET=uma-string-secreta-para-webhooks
 APP_BASE_URL=https://odonto-modular-ai.vercel.app
 ```
 
@@ -137,6 +138,7 @@ npx vercel@latest env add AI_MODEL_STANDARD production
 npx vercel@latest env add AI_MODEL_ADVANCED production
 npx vercel@latest env add AI_MODEL_SPECIALIST production
 npx vercel@latest env add PAYMENT_PROVIDER production
+npx vercel@latest env add PAYMENT_WEBHOOK_SECRET production
 npx vercel@latest env add APP_BASE_URL production
 ```
 
@@ -297,6 +299,7 @@ A base de assinatura ja existe sem prender o app a um gateway especifico. O prov
 
 ```text
 PAYMENT_PROVIDER=mock
+PAYMENT_WEBHOOK_SECRET=uma-string-secreta-para-webhooks
 APP_BASE_URL=https://odonto-modular-ai.vercel.app
 ```
 
@@ -304,6 +307,7 @@ No MVP, `PAYMENT_PROVIDER=mock` cria um checkout simulado e grava os dados no Fi
 
 - `subscriptions`: assinatura atual da clinica;
 - `paymentCheckoutSessions`: sessoes de checkout criadas;
+- `paymentWebhookEvents`: webhooks recebidos, com idempotencia por `eventId`;
 - `billingEvents`: eventos internos de cobranca e auditoria financeira.
 
 Endpoints:
@@ -311,6 +315,34 @@ Endpoints:
 - `GET /api/subscription/current`: retorna a assinatura atual da clinica;
 - `POST /api/subscription/checkout`: cria checkout da assinatura para o ciclo atual;
 - `POST /api/subscription/mock/activate`: ativa a assinatura em modo mock.
+- `POST /api/subscription/webhook`: recebe eventos do gateway e atualiza assinatura/eventos internos.
+
+O webhook aceita um payload normalizado:
+
+```json
+{
+  "eventId": "evt_123",
+  "eventType": "invoice.paid",
+  "clinicId": "clinic_123",
+  "provider": "mock",
+  "amount": 299.9,
+  "metadata": {
+    "providerSubscriptionId": "sub_123"
+  }
+}
+```
+
+Quando `PAYMENT_WEBHOOK_SECRET` estiver configurado, envie o header:
+
+```text
+x-payment-webhook-secret: sua-string-secreta
+```
+
+Eventos reconhecidos inicialmente:
+
+- pagamento confirmado: `checkout.completed`, `invoice.paid`, `payment.approved`, `subscription.activated`;
+- pagamento falhou: `invoice.payment_failed`, `payment.failed`, `subscription.past_due`;
+- assinatura cancelada: `subscription.canceled`, `subscription.cancelled`, `customer.subscription.deleted`.
 
 A tela `Cobranca` mostra o status da assinatura e permite criar/ativar checkout mock. Para integrar Stripe, Mercado Pago ou outro gateway, implemente um provider real mantendo o contrato do servico em `src/server/services/payment.service.ts` e converta webhooks externos em eventos internos no Firestore.
 

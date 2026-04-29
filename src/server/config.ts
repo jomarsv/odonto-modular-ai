@@ -8,5 +8,6 @@ export const config = {
   uploadDir: process.env.UPLOAD_DIR ?? (process.env.VERCEL ? "/tmp/uploads" : "./uploads"),
   aiProvider: process.env.AI_PROVIDER ?? "mock",
   paymentProvider: process.env.PAYMENT_PROVIDER ?? "mock",
+  paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? "",
   appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173"
 };

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { config } from "../config.js";
-import { addDoc, collectionNames, db, now, serializeDoc, serializeDocs, setDoc } from "../firestore.js";
+import { addDoc, collectionNames, db, getById, now, serializeDoc, serializeDocs, setDoc } from "../firestore.js";
 import { getMonthlyEstimate } from "./billing.service.js";
 
 export type SubscriptionStatus = "INCOMPLETE" | "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
@@ -119,4 +119,90 @@ export async function activateMockSubscription(input: { clinicId: string }) {
   });
 
   return subscription;
+}
+
+export async function processPaymentWebhook(input: {
+  eventId: string;
+  eventType: string;
+  clinicId: string;
+  provider?: string;
+  amount?: number;
+  metadata?: Record<string, unknown>;
+}) {
+  const existing = await getById(collectionNames.paymentWebhookEvents, input.eventId);
+  if (existing) return { duplicate: true, subscription: await getClinicSubscription(input.clinicId) };
+
+  await setDoc(collectionNames.paymentWebhookEvents, input.eventId, {
+    clinicId: input.clinicId,
+    provider: input.provider ?? config.paymentProvider,
+    eventType: input.eventType,
+    status: "PROCESSING",
+    amount: input.amount ?? 0,
+    metadata: input.metadata ?? {},
+    createdAt: now(),
+    processedAt: null
+  });
+
+  const current = await getClinicSubscription(input.clinicId);
+  const estimate = await getMonthlyEstimate(input.clinicId);
+  const { start, end } = nextCycle();
+  const amount = Number(input.amount ?? estimate.monthlyPrice);
+  let nextStatus: SubscriptionStatus | null = null;
+  let billingEventType = "PAYMENT_WEBHOOK_RECEIVED";
+  let description = `Webhook de pagamento recebido: ${input.eventType}`;
+
+  if (["checkout.completed", "invoice.paid", "payment.approved", "subscription.activated"].includes(input.eventType)) {
+    nextStatus = "ACTIVE";
+    billingEventType = "SUBSCRIPTION_PAYMENT_CONFIRMED";
+    description = "Pagamento confirmado pelo gateway.";
+  }
+  if (["invoice.payment_failed", "payment.failed", "subscription.past_due"].includes(input.eventType)) {
+    nextStatus = "PAST_DUE";
+    billingEventType = "SUBSCRIPTION_PAYMENT_FAILED";
+    description = "Falha de pagamento informada pelo gateway.";
+  }
+  if (["subscription.canceled", "subscription.cancelled", "customer.subscription.deleted"].includes(input.eventType)) {
+    nextStatus = "CANCELED";
+    billingEventType = "SUBSCRIPTION_CANCELED";
+    description = "Assinatura cancelada pelo gateway.";
+  }
+
+  let subscription = current;
+  if (nextStatus) {
+    subscription = await setDoc<Subscription>(collectionNames.subscriptions, `subscription_${input.clinicId}`, {
+      clinicId: input.clinicId,
+      provider: input.provider ?? current?.provider ?? config.paymentProvider,
+      status: nextStatus,
+      currentPeriodStart: current?.currentPeriodStart ?? start,
+      currentPeriodEnd: current?.currentPeriodEnd ?? end,
+      monthlyAmount: amount,
+      currency: "BRL",
+      providerCustomerId: current?.providerCustomerId ?? null,
+      providerSubscriptionId: current?.providerSubscriptionId ?? String(input.metadata?.providerSubscriptionId ?? ""),
+      checkoutUrl: current?.checkoutUrl ?? null,
+      updatedAt: now(),
+      createdAt: current?.createdAt ?? now()
+    });
+  }
+
+  await addDoc(collectionNames.billingEvents, {
+    clinicId: input.clinicId,
+    eventType: billingEventType,
+    description,
+    amount,
+    metadata: {
+      paymentWebhookEventId: input.eventId,
+      provider: input.provider ?? config.paymentProvider,
+      externalEventType: input.eventType,
+      ...(input.metadata ?? {})
+    },
+    createdAt: now()
+  });
+
+  await setDoc(collectionNames.paymentWebhookEvents, input.eventId, {
+    status: "PROCESSED",
+    processedAt: now()
+  });
+
+  return { duplicate: false, subscription };
 }
