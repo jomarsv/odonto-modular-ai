@@ -34,6 +34,9 @@ function buildPrompt(input: { featureKey: string; precisionLevel: AIPrecisionLev
 
 function mockGenerate(featureKey: string, precisionLevel: AIPrecisionLevel, input: string) {
   const intro = featureLabels[featureKey] ?? "Apoio odontologico";
+  if (featureKey === "record-summary") {
+    return `${intro}\n\nQueixa/Contexto\n${extractLine(input, "Paciente")}\n${extractSection(input, "Historico clinico")}\n\nAchados registrados\n${summarizeClinicalInput(input)}\n\nPlano em andamento\n${extractSection(input, "Procedimentos")}\n\nPendencias e alertas\n- Revisar informacoes clinicas antes de registrar conduta definitiva.\n- Confirmar achados em exame clinico e exames complementares quando necessario.\n\n${disclaimer}`;
+  }
   if (featureKey === "exam-image-analysis") {
     return `${intro}\n\nAnalise simulada de exame por imagem.\n\nResumo: a imagem foi registrada para triagem e apoio profissional. Como este MVP ainda nao executa visao computacional real, o resultado considera metadados, tipo de exame e observacoes informadas.\n\nPontos de atencao:\n- Conferir qualidade, enquadramento e identificacao do paciente.\n- Validar achados diretamente na imagem original.\n- Registrar interpretacao final no prontuario somente apos revisao profissional.\n\nBase analisada: ${input.slice(0, 900)}\n\n${disclaimer}`;
   }
@@ -46,6 +49,29 @@ function mockGenerate(featureKey: string, precisionLevel: AIPrecisionLevel, inpu
           ? "Versao detalhada com organizacao de achados, condutas e proximos passos."
           : "Versao especializada simulada, exigindo revisao humana obrigatoria.";
   return `${intro}\n\n${detail}\n\nBase analisada: ${input.slice(0, 900)}\n\n${disclaimer}`;
+}
+
+function extractLine(input: string, label: string) {
+  return input
+    .split("\n")
+    .find((line) => line.toLowerCase().startsWith(label.toLowerCase()))
+    ?.trim() || `${label}: nao informado`;
+}
+
+function extractSection(input: string, title: string) {
+  const lines = input.split("\n");
+  const start = lines.findIndex((line) => line.trim().toLowerCase() === `${title}:`.toLowerCase());
+  if (start < 0) return "- Nao informado.";
+  const next = lines.findIndex((line, index) => index > start && line.trim().endsWith(":") && !line.trim().startsWith("-"));
+  return lines.slice(start + 1, next > start ? next : undefined).join("\n").trim() || "- Nao informado.";
+}
+
+function summarizeClinicalInput(input: string) {
+  const relevant = input
+    .split("\n")
+    .filter((line) => /Anamnese|Diagnostico|Plano de tratamento|Evolucao/i.test(line))
+    .slice(0, 8);
+  return relevant.length ? relevant.join("\n") : "- Sem achados clinicos textuais suficientes.";
 }
 
 export async function generateText(input: {

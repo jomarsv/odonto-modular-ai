@@ -417,13 +417,47 @@ function Records({ api, onSaved }: { api: ApiClient; onSaved: (message: string) 
     await api.patch(`/records/procedures/${id}/status`, { status });
     loadClinical();
   }
+  function buildClinicalSummaryInput() {
+    const patient = summary?.patient ?? patients.find((item) => item.id === patientId);
+    const recordLines = records.length
+      ? records
+          .map(
+            (record, index) =>
+              `Evolucao ${index + 1} (${new Date(record.createdAt).toLocaleDateString("pt-BR")}):\n` +
+              `- Anamnese: ${record.anamnesis || "Nao informado"}\n` +
+              `- Diagnostico/anotacoes: ${record.diagnosisNotes || "Nao informado"}\n` +
+              `- Plano de tratamento: ${record.treatmentPlan || "Nao informado"}\n` +
+              `- Evolucao: ${record.evolutionNotes || "Nao informado"}`
+          )
+          .join("\n\n")
+      : "Sem evolucoes clinicas registradas.";
+    const procedureLines = procedures.length
+      ? procedures
+          .map((procedure) => `- ${procedure.procedureName} | Dente/regiao: ${procedure.tooth || procedure.region || "Nao informado"} | Status: ${procedure.status} | Obs: ${procedure.notes || "Sem observacoes"}`)
+          .join("\n")
+      : "Sem procedimentos registrados.";
+    return [
+      `Paciente: ${patient?.fullName ?? "Nao informado"}`,
+      patient?.birthDate ? `Nascimento: ${new Date(String(patient.birthDate)).toLocaleDateString("pt-BR")}` : "",
+      patient?.notes ? `Observacoes gerais: ${patient.notes}` : "",
+      "",
+      "Historico clinico:",
+      recordLines,
+      "",
+      "Procedimentos:",
+      procedureLines,
+      "",
+      "Gere um resumo clinico objetivo para revisao do cirurgiao-dentista, sem JSON bruto. Use secoes: Queixa/Contexto, Achados registrados, Plano em andamento, Pendencias e Alertas."
+    ]
+      .filter((line) => line !== "")
+      .join("\n");
+  }
   async function generateSummary() {
-    const context = JSON.stringify(summary ?? {}, null, 2);
     const response = await api.post<{ text: string }>("/ai/generate", {
       featureKey: "record-summary",
       precisionLevel: "STANDARD",
       patientId,
-      input: context.slice(0, 6000)
+      input: buildClinicalSummaryInput().slice(0, 6000)
     });
     setAiResult(response.text);
     onSaved("Resumo clinico gerado.");
