@@ -8,7 +8,7 @@ export const config = {
   uploadDir: process.env.UPLOAD_DIR ?? (process.env.VERCEL ? "/tmp/uploads" : "./uploads"),
   aiProvider: process.env.AI_PROVIDER ?? "mock",
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
-  openaiVisionModel: process.env.OPENAI_VISION_MODEL ?? "gpt-4.1-mini",
+  openaiVisionModel: process.env.OPENAI_VISION_MODEL ?? "gpt-5.5",
   paymentProvider: process.env.PAYMENT_PROVIDER ?? "mock",
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",

@@ -12,7 +12,16 @@ const modelRates: Record<string, { input: number; output: number }> = {
   "mock-basic": { input: 0.000002, output: 0.000004 },
   "mock-standard": { input: 0.000004, output: 0.000008 },
   "mock-advanced": { input: 0.000008, output: 0.000016 },
-  "mock-specialist": { input: 0.000016, output: 0.000032 }
+  "mock-specialist": { input: 0.000016, output: 0.000032 },
+  "gpt-5.5": { input: 0.00000125, output: 0.00001 },
+  "gpt-5.4": { input: 0.00000125, output: 0.00001 },
+  "gpt-5.3": { input: 0.00000125, output: 0.00001 },
+  "gpt-5.2": { input: 0.00000125, output: 0.00001 },
+  "gpt-5.1": { input: 0.00000125, output: 0.00001 },
+  "gpt-5": { input: 0.00000125, output: 0.00001 },
+  "gpt-5-mini": { input: 0.00000025, output: 0.000002 },
+  "gpt-5-nano": { input: 0.00000005, output: 0.0000004 },
+  "gpt-4.1-mini": { input: 0.0000004, output: 0.0000016 }
 };
 
 export function estimateAICost(input: {

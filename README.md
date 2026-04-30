@@ -101,7 +101,7 @@ AI_MODEL_STANDARD=mock-standard
 AI_MODEL_ADVANCED=mock-advanced
 AI_MODEL_SPECIALIST=mock-specialist
 OPENAI_API_KEY=sk-...
-OPENAI_VISION_MODEL=gpt-4.1-mini
+OPENAI_VISION_MODEL=gpt-5.5
 PAYMENT_PROVIDER=mock
 PAYMENT_WEBHOOK_SECRET=uma-string-secreta-para-webhooks
 STRIPE_SECRET_KEY=sk_live_ou_sk_test
@@ -298,10 +298,12 @@ Para ativar visao computacional real, configure:
 
 ```text
 OPENAI_API_KEY=sk-...
-OPENAI_VISION_MODEL=gpt-4.1-mini
+OPENAI_VISION_MODEL=gpt-5.5
 ```
 
 Quando configurado, o backend le o arquivo da imagem, envia os pixels em Base64 para o modelo multimodal e gera um relatorio com qualidade tecnica, achados visuais, hipoteses diagnosticas assistivas, limitacoes e proximos passos.
+
+Para apresentacao clinica, use a familia GPT-5 atual. O padrao do projeto e `gpt-5.5`; alternativas de custo/latencia podem ser `gpt-5.2`, `gpt-5-mini` ou outro modelo GPT-5 com entrada de imagem habilitada na API.
 
 Este modulo nao usa fallback simulado para apresentacao clinica: se `OPENAI_API_KEY` nao estiver configurada ou se o arquivo nao estiver disponivel no runtime, a analise falha e o exame fica com status `FAILED`.
 
