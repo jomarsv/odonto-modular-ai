@@ -9,7 +9,9 @@ const featureLabels: Record<string, string> = {
   "record-summary": "Resumo do prontuario",
   "clinical-report": "Relatorio clinico simples",
   "patient-guidance": "Mensagem de orientacao ao paciente",
-  "exam-image-analysis": "Analise de imagem de exame odontologico"
+  "exam-image-analysis": "Analise de imagem de exame odontologico",
+  "specialty-analysis": "Analise de especialidade odontologica",
+  "specialty-question": "Pergunta para IA por especialidade"
 };
 
 function modelForPrecision(level: AIPrecisionLevel) {
@@ -36,6 +38,9 @@ function mockGenerate(featureKey: string, precisionLevel: AIPrecisionLevel, inpu
   const intro = featureLabels[featureKey] ?? "Apoio odontologico";
   if (featureKey === "record-summary") {
     return `${intro}\n\nQueixa/Contexto\n${extractLine(input, "Paciente")}\n${extractSection(input, "Historico clinico")}\n\nAchados registrados\n${summarizeClinicalInput(input)}\n\nPlano em andamento\n${extractSection(input, "Procedimentos")}\n\nPendencias e alertas\n- Revisar informacoes clinicas antes de registrar conduta definitiva.\n- Confirmar achados em exame clinico e exames complementares quando necessario.\n\n${disclaimer}`;
+  }
+  if (featureKey === "specialty-analysis" || featureKey === "specialty-question") {
+    return `${intro}\n\nContexto analisado\n${input.slice(0, 1200)}\n\nResposta tecnica\n- Organize os dados por relevancia clinica.\n- Aponte pontos que precisam de confirmacao no exame clinico, imagens ou testes complementares.\n- Sugira proximos passos dentro da especialidade, mantendo linguagem de apoio profissional.\n\nPerguntas de revisao\n- Ha informacoes faltantes para fechar conduta?\n- Existe necessidade de encaminhamento ou exame complementar?\n- O plano proposto esta coerente com os achados registrados?\n\n${disclaimer}`;
   }
   if (featureKey === "exam-image-analysis") {
     return `${intro}\n\nAnalise simulada de exame por imagem.\n\nResumo: a imagem foi registrada para triagem e apoio profissional. Como este MVP ainda nao executa visao computacional real, o resultado considera metadados, tipo de exame e observacoes informadas.\n\nPontos de atencao:\n- Conferir qualidade, enquadramento e identificacao do paciente.\n- Validar achados diretamente na imagem original.\n- Registrar interpretacao final no prontuario somente apos revisao profissional.\n\nBase analisada: ${input.slice(0, 900)}\n\n${disclaimer}`;

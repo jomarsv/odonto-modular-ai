@@ -12,7 +12,7 @@ aiRouter.use(authenticate);
 aiRouter.use(requireModule(["ai-basic", "ai-advanced"]));
 
 const aiSchema = z.object({
-  featureKey: z.enum(["record-summary", "clinical-report", "patient-guidance"]),
+  featureKey: z.enum(["record-summary", "clinical-report", "patient-guidance", "specialty-analysis", "specialty-question"]),
   precisionLevel: z.enum(aiPrecisionLevels),
   input: z.string().min(5),
   context: z.string().optional(),

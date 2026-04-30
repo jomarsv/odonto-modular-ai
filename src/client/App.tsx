@@ -554,7 +554,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
   const [exams, setExams] = useState<ExamImage[]>([]);
   const [patientId, setPatientId] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [form, setForm] = useState({ examType: "Radiografia panoramica", clinicalQuestion: "", precisionLevel: "SPECIALIST" });
+  const [form, setForm] = useState({ examType: "Radiografia panoramica", clinicalQuestion: "", precisionLevel: "SPECIALIST", aiQuestion: "" });
   const [selectedResult, setSelectedResult] = useState("");
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const load = () => {
@@ -591,6 +591,23 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
     onSaved("Exame excluido.");
     load();
   }
+  async function askExamAI(exam: ExamImage) {
+    const input = [
+      `Tipo de exame: ${exam.examType}`,
+      `Arquivo: ${exam.fileName}`,
+      `Status da analise: ${exam.analysisStatus}`,
+      `Resultado da analise: ${exam.analysisResult || "Sem analise registrada"}`,
+      `Pergunta: ${form.aiQuestion}`
+    ].join("\n");
+    const response = await api.post<{ text: string }>("/ai/generate", {
+      featureKey: "specialty-question",
+      precisionLevel: form.precisionLevel,
+      patientId,
+      input
+    });
+    setSelectedResult(response.text);
+    onSaved("Pergunta respondida pela IA.");
+  }
   return (
     <Section title="Exames por imagem IA">
       <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
@@ -598,6 +615,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
           <Field label="Paciente"><select required value={patientId} onChange={(e) => setPatientId(e.target.value)}><option value="">Selecione</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}</select></Field>
           <Field label="Tipo de exame"><select value={form.examType} onChange={(e) => setForm({ ...form, examType: e.target.value })}><option>Radiografia panoramica</option><option>Radiografia periapical</option><option>Tomografia odontologica</option><option>Foto intraoral</option><option>Outro exame de imagem</option></select></Field>
           <Field label="Pergunta clinica"><textarea rows={4} value={form.clinicalQuestion} onChange={(e) => setForm({ ...form, clinicalQuestion: e.target.value })} /></Field>
+          <Field label="Pergunta para IA"><textarea rows={3} value={form.aiQuestion} onChange={(e) => setForm({ ...form, aiQuestion: e.target.value })} /></Field>
           <Field label="Precisao da analise"><select value={form.precisionLevel} onChange={(e) => setForm({ ...form, precisionLevel: e.target.value })}>{["STANDARD", "ADVANCED", "SPECIALIST"].map((level) => <option key={level}>{level}</option>)}</select></Field>
           <Field label="Imagem"><input required type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
           <button className="btn-primary">Enviar imagem</button>
@@ -611,7 +629,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
                   <td><p className="font-medium">{exam.examType}</p><p className="text-xs text-slate-500">{exam.fileName}</p></td>
                   <td><p>{exam.analysisStatus}</p><p className="text-xs text-slate-500">{exam.analysisProvider || "pendente"}</p></td>
                   <td><a className="text-primary-700" href={exam.fileUrl} target="_blank">Abrir</a></td>
-                  <td><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={() => analyze(exam.id)}>Analisar</button><button className="btn-secondary" onClick={() => removeExam(exam)}>Excluir</button></div></td>
+                  <td><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={() => analyze(exam.id)}>Analisar</button><button className="btn-secondary" disabled={!form.aiQuestion.trim()} onClick={() => askExamAI(exam)}>Perguntar</button><button className="btn-secondary" onClick={() => removeExam(exam)}>Excluir</button></div></td>
                 </tr>
               ))}
             </Table>
@@ -634,7 +652,8 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState(activeSpecialtyModules[0]?.id ?? "");
   const [entries, setEntries] = useState<Array<Record<string, any>>>([]);
-  const [form, setForm] = useState({ patientId: "", title: "", notes: "", status: "OPEN" });
+  const [form, setForm] = useState({ patientId: "", title: "", notes: "", status: "OPEN", tooth: "", diagnosis: "", canalNotes: "", aiQuestion: "" });
+  const [aiResult, setAiResult] = useState("");
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const loadEntries = () => {
@@ -650,12 +669,52 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
       moduleId: selectedModuleId,
       patientId: form.patientId || undefined,
       title: form.title,
-      notes: form.notes,
+      notes: buildSpecialtyNotes(),
       status: form.status
     });
-    setForm({ patientId: "", title: "", notes: "", status: "OPEN" });
+    setForm({ patientId: "", title: "", notes: "", status: "OPEN", tooth: "", diagnosis: "", canalNotes: "", aiQuestion: "" });
     onSaved("Registro do modulo salvo.");
     loadEntries();
+  }
+  function buildSpecialtyNotes() {
+    if (selectedModule?.id !== "endodontics-planning") return form.notes;
+    return [
+      `Dente/regiao: ${form.tooth || "Nao informado"}`,
+      `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}`,
+      `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}`,
+      `Notas gerais: ${form.notes || "Nao informado"}`
+    ].join("\n");
+  }
+  function buildSpecialtyAIInput() {
+    const patient = patients.find((item) => item.id === form.patientId);
+    const recentEntries = entries
+      .slice(0, 5)
+      .map((entry) => `- ${entry.title} (${entry.status}): ${entry.notes}`)
+      .join("\n");
+    return [
+      `Especialidade: ${selectedModule?.specialtyName}`,
+      `Modulo: ${selectedModule?.name}`,
+      `Paciente: ${patient?.fullName ?? "Nao vinculado"}`,
+      selectedModule?.id === "endodontics-planning" ? `Dente/regiao: ${form.tooth || "Nao informado"}` : "",
+      selectedModule?.id === "endodontics-planning" ? `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}` : "",
+      selectedModule?.id === "endodontics-planning" ? `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}` : "",
+      `Registro atual: ${form.title || "Sem titulo"}`,
+      `Notas atuais: ${form.notes || "Sem notas"}`,
+      `Historico recente do modulo:\n${recentEntries || "Sem historico"}`,
+      `Pergunta para IA: ${form.aiQuestion || "Realize uma analise tecnica do caso e sugira proximos passos."}`
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+  async function runSpecialtyAI(featureKey: "specialty-analysis" | "specialty-question") {
+    const response = await api.post<{ text: string }>("/ai/generate", {
+      featureKey,
+      precisionLevel: "ADVANCED",
+      patientId: form.patientId || undefined,
+      input: buildSpecialtyAIInput()
+    });
+    setAiResult(response.text);
+    onSaved(featureKey === "specialty-analysis" ? "Analise da especialidade gerada." : "Pergunta respondida pela IA.");
   }
   if (!activeSpecialtyModules.length) return <Section title="Especialidades"><p>Nenhum modulo de especialidade ativo.</p></Section>;
   return (
@@ -677,22 +736,38 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
             </div>
             {selectedModule.id === "exam-images-ai" && <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">Este modulo tambem possui a tela dedicada Exames IA para upload e analise visual real.</p>}
             <Field label="Paciente"><select value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}><option value="">Sem paciente</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.fullName}</option>)}</select></Field>
+            {selectedModule.id === "endodontics-planning" && (
+              <>
+                <Field label="Dente/regiao"><input value={form.tooth} onChange={(e) => setForm({ ...form, tooth: e.target.value })} /></Field>
+                <Field label="Hipotese diagnostica"><input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} /></Field>
+                <Field label="Canais, testes e observacoes"><textarea rows={4} value={form.canalNotes} onChange={(e) => setForm({ ...form, canalNotes: e.target.value })} /></Field>
+              </>
+            )}
             <Field label="Titulo"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
             <Field label="Status"><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{["OPEN", "IN_PROGRESS", "DONE"].map((status) => <option key={status}>{status}</option>)}</select></Field>
             <Field label="Notas do modulo"><textarea required rows={6} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
-            <button className="btn-primary">Salvar registro</button>
+            <Field label="Pergunta para IA"><textarea rows={4} value={form.aiQuestion} onChange={(e) => setForm({ ...form, aiQuestion: e.target.value })} /></Field>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-primary">Salvar registro</button>
+              <button type="button" className="btn-secondary" onClick={() => runSpecialtyAI("specialty-analysis")}>Analisar IA</button>
+              <button type="button" className="btn-secondary" disabled={!form.aiQuestion.trim()} onClick={() => runSpecialtyAI("specialty-question")}>Perguntar IA</button>
+            </div>
+            <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Conteudo gerado por IA para apoio profissional. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
           </form>
-          <div className="panel overflow-hidden">
-            <Table headers={["Data", "Paciente", "Titulo", "Status"]}>
-              {entries.map((entry) => (
-                <tr key={String(entry.id)}>
-                  <td>{entry.createdAt ? new Date(String(entry.createdAt)).toLocaleString("pt-BR") : ""}</td>
-                  <td>{String(entry.patient?.fullName ?? "-")}</td>
-                  <td><p className="font-medium">{String(entry.title)}</p><p className="text-xs text-slate-500">{String(entry.notes)}</p></td>
-                  <td>{String(entry.status)}</td>
-                </tr>
-              ))}
-            </Table>
+          <div className="space-y-4">
+            {aiResult && <pre className="panel whitespace-pre-wrap p-4 text-sm">{aiResult}</pre>}
+            <div className="panel overflow-hidden">
+              <Table headers={["Data", "Paciente", "Titulo", "Status"]}>
+                {entries.map((entry) => (
+                  <tr key={String(entry.id)}>
+                    <td>{entry.createdAt ? new Date(String(entry.createdAt)).toLocaleString("pt-BR") : ""}</td>
+                    <td>{String(entry.patient?.fullName ?? "-")}</td>
+                    <td><p className="font-medium">{String(entry.title)}</p><p className="text-xs text-slate-500 whitespace-pre-wrap">{String(entry.notes)}</p></td>
+                    <td>{String(entry.status)}</td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
           </div>
         </div>
       )}

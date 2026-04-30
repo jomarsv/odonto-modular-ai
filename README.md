@@ -225,6 +225,13 @@ Na interface, a tela `Modulos` possui uma aba raiz `Comuns` e abas por especiali
 
 Quando uma clinica ativa qualquer modulo de especialidade, o menu `Especialidades` fica disponivel. Essa area mostra apenas os modulos especificos ativos e permite registrar acompanhamentos, notas e status por paciente dentro de cada modulo. Modulos com tela propria, como `IA para imagens de exames`, continuam expondo sua funcionalidade dedicada.
 
+Todos os modulos de especialidade ativos possuem acoes de IA:
+
+- `Analisar IA`: gera uma analise tecnica do contexto do modulo;
+- `Perguntar IA`: responde uma pergunta livre com base no paciente, modulo e historico recente.
+
+O modulo `Planejamento endodontico` possui campos especificos para dente/regiao, hipotese diagnostica, canais, testes e observacoes, usados como contexto para a IA.
+
 - Pacientes
 - Agenda
 - Prontuario
@@ -294,6 +301,8 @@ Funcoes disponiveis:
 - `clinical-report`
 - `patient-guidance`
 - `exam-image-analysis`
+- `specialty-analysis`
+- `specialty-question`
 
 Se nao houver provider real configurado, o servico usa mock seguro, estima tokens, calcula custo, grava `AIUsageLog` e cria `BillingEvent`.
 
