@@ -74,3 +74,7 @@ export async function updateDoc<T extends Record<string, unknown>>(collection: s
   await db().collection(collection).doc(id).update(data);
   return getById<T>(collection, id) as Promise<Doc<T>>;
 }
+
+export async function deleteDoc(collection: string, id: string) {
+  await db().collection(collection).doc(id).delete();
+}

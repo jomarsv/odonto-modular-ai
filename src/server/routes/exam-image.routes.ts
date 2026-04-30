@@ -4,7 +4,7 @@ import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { config } from "../config.js";
-import { addDoc, collectionNames, db, getById, now, serializeDocs, updateDoc } from "../firestore.js";
+import { addDoc, collectionNames, db, deleteDoc, getById, now, serializeDocs, updateDoc } from "../firestore.js";
 import { aiPrecisionLevels } from "../domain.js";
 import { authenticate } from "../middleware/auth.js";
 import { requireModule } from "../middleware/modules.js";
@@ -127,5 +127,22 @@ examImageRouter.post(
     });
     await logAction({ clinicId: user.clinicId, userId: user.id, action: "AI_ANALYZE", entity: "ExamImage", entityId: examId });
     res.json({ exam: updated, analysis });
+  })
+);
+
+examImageRouter.delete(
+  "/:examId",
+  asyncHandler(async (req, res) => {
+    const user = requireUser(req);
+    const examId = String(req.params.examId);
+    const exam = await getById<Record<string, unknown>>(collectionNames.examImages, examId);
+    if (!exam || exam.clinicId !== user.clinicId) throw new HttpError(404, "Exame nao encontrado.");
+
+    if (typeof exam.filePath === "string") {
+      await fs.promises.unlink(exam.filePath).catch(() => undefined);
+    }
+    await deleteDoc(collectionNames.examImages, examId);
+    await logAction({ clinicId: user.clinicId, userId: user.id, action: "DELETE", entity: "ExamImage", entityId: examId });
+    res.status(204).send();
   })
 );

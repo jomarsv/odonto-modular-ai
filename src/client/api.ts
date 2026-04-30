@@ -25,6 +25,7 @@ export class ApiClient {
             : "Erro inesperado.";
       throw new Error(body.message ?? fallback);
     }
+    if (response.status === 204) return undefined as T;
     return response.json() as Promise<T>;
   }
 
@@ -42,6 +43,10 @@ export class ApiClient {
 
   patch<T>(path: string, body: unknown) {
     return this.request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+  }
+
+  delete<T>(path: string) {
+    return this.request<T>(path, { method: "DELETE" });
   }
 
   upload<T>(path: string, formData: FormData) {

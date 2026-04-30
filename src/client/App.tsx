@@ -532,6 +532,14 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
     onSaved("Analise visual real registrada.");
     load();
   }
+  async function removeExam(exam: ExamImage) {
+    const confirmed = window.confirm(`Excluir ${exam.examType} (${exam.fileName})?`);
+    if (!confirmed) return;
+    await api.delete<void>(`/exam-images/${exam.id}`);
+    setSelectedResult("");
+    onSaved("Exame excluido.");
+    load();
+  }
   return (
     <Section title="Exames por imagem IA">
       <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
@@ -546,13 +554,13 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
         </form>
         <div className="space-y-4">
           <div className="panel overflow-hidden">
-            <Table headers={["Exame", "Status", "Imagem", ""]}>
+            <Table headers={["Exame", "Status", "Imagem", "Acoes"]}>
               {exams.map((exam) => (
                 <tr key={exam.id}>
                   <td><p className="font-medium">{exam.examType}</p><p className="text-xs text-slate-500">{exam.fileName}</p></td>
                   <td><p>{exam.analysisStatus}</p><p className="text-xs text-slate-500">{exam.analysisProvider || "pendente"}</p></td>
                   <td><a className="text-primary-700" href={exam.fileUrl} target="_blank">Abrir</a></td>
-                  <td><button className="btn-secondary" onClick={() => analyze(exam.id)}>Analisar</button></td>
+                  <td><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={() => analyze(exam.id)}>Analisar</button><button className="btn-secondary" onClick={() => removeExam(exam)}>Excluir</button></div></td>
                 </tr>
               ))}
             </Table>
