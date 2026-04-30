@@ -246,6 +246,22 @@ A Endodontia e organizada em submodulos comerciais e funcionais, sem tratar essa
 
 Campos especificos de cada submodulo endodontico entram no registro e no contexto de IA: submodulo, escopo, dente/regiao, hipotese diagnostica, status pulpar, status periapical, achados de imagem, objetivo endodontico, canais, testes e observacoes.
 
+A Implantodontia tambem e organizada em submodulos comerciais e funcionais. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
+
+- Planejamento de implantes: R$ 149,90/mes;
+- Implantodontia cirurgica: R$ 139,90/mes;
+- Implantodontia protetica: R$ 129,90/mes;
+- Implantodontia com regeneracao ossea: R$ 159,90/mes;
+- Implantodontia com cirurgias avancadas: R$ 179,90/mes;
+- Implantodontia imediata: R$ 149,90/mes;
+- Implantodontia guiada: R$ 169,90/mes;
+- Implantodontia estetica: R$ 149,90/mes;
+- Implantodontia peri-implantar: R$ 119,90/mes;
+- Implantodontia biomateriais e superficies: R$ 109,90/mes;
+- Implantodontia digital / inteligente: R$ 189,90/mes.
+
+Campos especificos de cada submodulo de Implantodontia entram no registro e no contexto de IA: submodulo, escopo, regiao/elementos, avaliacao ossea, planejamento protetico, planejamento cirurgico, achados de imagem/CBCT, fatores de risco e manutencao.
+
 O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
 
 ### Balcao LEO-Tech de funcionalidades personalizadas

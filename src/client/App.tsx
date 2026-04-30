@@ -187,6 +187,75 @@ const endodonticSubmodules = [
   }
 ];
 
+const implantologySubmodules = [
+  {
+    moduleKey: "implantology-planning",
+    label: "Planejamento de implantes",
+    description: "Base para planejamento cirurgico-protetico, avaliacao de risco e checklist de implantes.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "implantology-surgical",
+    label: "Implantodontia cirurgica",
+    description: "Instalacao de implantes, acesso osseo, volume/densidade ossea, implantes unitarios, multiplos e imediatos.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "implantology-prosthetic",
+    label: "Implantodontia protetica",
+    description: "Reabilitacao sobre implantes, coroas, proteses fixas, protocolo, ajustes oclusais e estetica funcional.",
+    monthlyPrice: 129.9
+  },
+  {
+    moduleKey: "implantology-bone-regeneration",
+    label: "Implantodontia com regeneracao ossea",
+    description: "Enxertos osseos, regeneracao ossea guiada, biomateriais e preparo de leito para implantes.",
+    monthlyPrice: 159.9
+  },
+  {
+    moduleKey: "implantology-advanced-surgeries",
+    label: "Implantodontia com cirurgias avancadas",
+    description: "Sinus lift, expansao ossea, split crest e cirurgias reconstrutivas.",
+    monthlyPrice: 179.9
+  },
+  {
+    moduleKey: "implantology-immediate",
+    label: "Implantodontia imediata",
+    description: "Implante no momento da extracao, estabilidade primaria, reducao de tempo e planejamento preciso.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "implantology-guided",
+    label: "Implantodontia guiada",
+    description: "Planejamento digital com CBCT/software, guias cirurgicos e execucao minimamente invasiva.",
+    monthlyPrice: 169.9
+  },
+  {
+    moduleKey: "implantology-aesthetic",
+    label: "Implantodontia estetica",
+    description: "Regiao anterior, contorno gengival, harmonia facial e perfil de emergencia.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "implantology-peri-implant",
+    label: "Implantodontia peri-implantar",
+    description: "Peri-implantite, mucosite peri-implantar, manutencao preventiva e complicacoes.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "implantology-biomaterials",
+    label: "Implantodontia biomateriais e superficies",
+    description: "Tipos de implantes, tratamentos de superficie, biomateriais e osseointegracao.",
+    monthlyPrice: 109.9
+  },
+  {
+    moduleKey: "implantology-digital-ai",
+    label: "Implantodontia digital / inteligente",
+    description: "Planejamento digital completo, simulacao, integracao com IA e predicao de sucesso do implante.",
+    monthlyPrice: 189.9
+  }
+];
+
 function money(value: number | string) {
   return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -851,6 +920,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     periapicalStatus: "",
     imagingFindings: "",
     endodonticObjective: "",
+    implantRegion: "",
+    boneAssessment: "",
+    prostheticPlan: "",
+    surgicalPlan: "",
+    implantImaging: "",
+    implantRiskFactors: "",
     skeletalClass: "",
     malocclusion: "",
     orthodonticObjectives: "",
@@ -861,6 +936,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
   const selectedEndodonticSubmodule = endodonticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isEndodonticModule = Boolean(selectedEndodonticSubmodule);
+  const selectedImplantologySubmodule = implantologySubmodules.find((item) => item.moduleKey === selectedModule?.id);
+  const isImplantologyModule = Boolean(selectedImplantologySubmodule);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const loadEntries = () => {
     if (selectedModuleId) api.get<Array<Record<string, any>>>(`/module-workspace/${selectedModuleId}`).then(setEntries);
@@ -895,6 +972,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       periapicalStatus: "",
       imagingFindings: "",
       endodonticObjective: "",
+      implantRegion: "",
+      boneAssessment: "",
+      prostheticPlan: "",
+      surgicalPlan: "",
+      implantImaging: "",
+      implantRiskFactors: "",
       skeletalClass: "",
       malocclusion: "",
       orthodonticObjectives: "",
@@ -926,6 +1009,19 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
         `Notas gerais: ${form.notes || "Nao informado"}`
       ].join("\n");
     }
+    if (isImplantologyModule) {
+      return [
+        `Submodulo de implantodontia: ${selectedImplantologySubmodule?.label || "Nao informado"}`,
+        `Escopo: ${selectedImplantologySubmodule?.description || "Nao informado"}`,
+        `Regiao/elementos: ${form.implantRegion || "Nao informado"}`,
+        `Avaliacao ossea: ${form.boneAssessment || "Nao informado"}`,
+        `Planejamento protetico: ${form.prostheticPlan || "Nao informado"}`,
+        `Planejamento cirurgico: ${form.surgicalPlan || "Nao informado"}`,
+        `Achados de imagem/CBCT: ${form.implantImaging || "Nao informado"}`,
+        `Fatores de risco e manutencao: ${form.implantRiskFactors || "Nao informado"}`,
+        `Notas gerais: ${form.notes || "Nao informado"}`
+      ].join("\n");
+    }
     return form.notes;
   }
   function buildSpecialtyAIInput() {
@@ -948,6 +1044,15 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       isEndodonticModule ? `Achados de imagem: ${form.imagingFindings || "Nao informado"}` : "",
       isEndodonticModule ? `Objetivo endodontico: ${form.endodonticObjective || "Nao informado"}` : "",
       isEndodonticModule ? `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}` : "",
+      isImplantologyModule ? "Nota tecnica: Implantodontia e uma especialidade formal; estes itens sao submodulos funcionais e comerciais para organizar fluxo, cobranca e analise." : "",
+      isImplantologyModule ? `Submodulo de implantodontia: ${selectedImplantologySubmodule?.label || "Nao informado"}` : "",
+      isImplantologyModule ? `Escopo do submodulo: ${selectedImplantologySubmodule?.description || "Nao informado"}` : "",
+      isImplantologyModule ? `Regiao/elementos: ${form.implantRegion || "Nao informado"}` : "",
+      isImplantologyModule ? `Avaliacao ossea: ${form.boneAssessment || "Nao informado"}` : "",
+      isImplantologyModule ? `Planejamento protetico: ${form.prostheticPlan || "Nao informado"}` : "",
+      isImplantologyModule ? `Planejamento cirurgico: ${form.surgicalPlan || "Nao informado"}` : "",
+      isImplantologyModule ? `Achados de imagem/CBCT: ${form.implantImaging || "Nao informado"}` : "",
+      isImplantologyModule ? `Fatores de risco e manutencao: ${form.implantRiskFactors || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}` : "",
@@ -1030,6 +1135,18 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
                 <Field label="Classe esqueletica / relacao sagital"><input value={form.skeletalClass} onChange={(e) => setForm({ ...form, skeletalClass: e.target.value })} placeholder="Ex.: Classe I, Classe II, Classe III" /></Field>
                 <Field label="Maloclusao e achados principais"><textarea rows={4} value={form.malocclusion} onChange={(e) => setForm({ ...form, malocclusion: e.target.value })} placeholder="Apinhamento, mordida aberta, sobremordida, mordida cruzada..." /></Field>
                 <Field label="Objetivos ortodonticos"><textarea rows={4} value={form.orthodonticObjectives} onChange={(e) => setForm({ ...form, orthodonticObjectives: e.target.value })} placeholder="Alinhamento, nivelamento, correcao transversal, controle vertical..." /></Field>
+              </>
+            )}
+            {isImplantologyModule && (
+              <>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Implantodontia e uma especialidade formal; este item e tratado como submodulo comercial e funcional para fluxo, cobranca e analise especifica.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedImplantologySubmodule?.description} Custo do submodulo: {money(selectedImplantologySubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <Field label="Regiao / elementos"><input value={form.implantRegion} onChange={(e) => setForm({ ...form, implantRegion: e.target.value })} placeholder="Ex.: 11, 21, posterior mandibula, protocolo superior..." /></Field>
+                <Field label="Avaliacao ossea"><textarea rows={3} value={form.boneAssessment} onChange={(e) => setForm({ ...form, boneAssessment: e.target.value })} placeholder="Volume, densidade, altura, espessura, necessidade de enxerto..." /></Field>
+                <Field label="Planejamento protetico"><textarea rows={3} value={form.prostheticPlan} onChange={(e) => setForm({ ...form, prostheticPlan: e.target.value })} placeholder="Coroa, protocolo, carga, oclusao, perfil de emergencia..." /></Field>
+                <Field label="Planejamento cirurgico"><textarea rows={3} value={form.surgicalPlan} onChange={(e) => setForm({ ...form, surgicalPlan: e.target.value })} placeholder="Tecnica, implante imediato, guia cirurgico, sinus lift, split crest..." /></Field>
+                <Field label="Achados de imagem / CBCT"><textarea rows={3} value={form.implantImaging} onChange={(e) => setForm({ ...form, implantImaging: e.target.value })} placeholder="CBCT, canal mandibular, seio maxilar, cortical, defeitos osseos..." /></Field>
+                <Field label="Fatores de risco e manutencao"><textarea rows={3} value={form.implantRiskFactors} onChange={(e) => setForm({ ...form, implantRiskFactors: e.target.value })} placeholder="Tabagismo, diabetes, peri-implantite, higiene, manutencao..." /></Field>
               </>
             )}
             <Field label="Titulo"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
