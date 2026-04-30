@@ -232,6 +232,8 @@ Todos os modulos de especialidade ativos possuem acoes de IA:
 
 O modulo `Planejamento endodontico` possui campos especificos para dente/regiao, hipotese diagnostica, canais, testes e observacoes, usados como contexto para a IA.
 
+O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
+
 - Pacientes
 - Agenda
 - Prontuario

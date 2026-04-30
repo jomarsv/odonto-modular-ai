@@ -652,7 +652,19 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState(activeSpecialtyModules[0]?.id ?? "");
   const [entries, setEntries] = useState<Array<Record<string, any>>>([]);
-  const [form, setForm] = useState({ patientId: "", title: "", notes: "", status: "OPEN", tooth: "", diagnosis: "", canalNotes: "", aiQuestion: "" });
+  const [form, setForm] = useState({
+    patientId: "",
+    title: "",
+    notes: "",
+    status: "OPEN",
+    tooth: "",
+    diagnosis: "",
+    canalNotes: "",
+    skeletalClass: "",
+    malocclusion: "",
+    orthodonticObjectives: "",
+    aiQuestion: ""
+  });
   const [aiResult, setAiResult] = useState("");
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
@@ -672,18 +684,40 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
       notes: buildSpecialtyNotes(),
       status: form.status
     });
-    setForm({ patientId: "", title: "", notes: "", status: "OPEN", tooth: "", diagnosis: "", canalNotes: "", aiQuestion: "" });
+    setForm({
+      patientId: "",
+      title: "",
+      notes: "",
+      status: "OPEN",
+      tooth: "",
+      diagnosis: "",
+      canalNotes: "",
+      skeletalClass: "",
+      malocclusion: "",
+      orthodonticObjectives: "",
+      aiQuestion: ""
+    });
     onSaved("Registro do modulo salvo.");
     loadEntries();
   }
   function buildSpecialtyNotes() {
-    if (selectedModule?.id !== "endodontics-planning") return form.notes;
-    return [
-      `Dente/regiao: ${form.tooth || "Nao informado"}`,
-      `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}`,
-      `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}`,
-      `Notas gerais: ${form.notes || "Nao informado"}`
-    ].join("\n");
+    if (selectedModule?.id === "endodontics-planning") {
+      return [
+        `Dente/regiao: ${form.tooth || "Nao informado"}`,
+        `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}`,
+        `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}`,
+        `Notas gerais: ${form.notes || "Nao informado"}`
+      ].join("\n");
+    }
+    if (selectedModule?.id === "orthodontics-planning") {
+      return [
+        `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}`,
+        `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}`,
+        `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}`,
+        `Notas gerais: ${form.notes || "Nao informado"}`
+      ].join("\n");
+    }
+    return form.notes;
   }
   function buildSpecialtyAIInput() {
     const patient = patients.find((item) => item.id === form.patientId);
@@ -698,6 +732,9 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
       selectedModule?.id === "endodontics-planning" ? `Dente/regiao: ${form.tooth || "Nao informado"}` : "",
       selectedModule?.id === "endodontics-planning" ? `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}` : "",
       selectedModule?.id === "endodontics-planning" ? `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}` : "",
+      selectedModule?.id === "orthodontics-planning" ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
+      selectedModule?.id === "orthodontics-planning" ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
+      selectedModule?.id === "orthodontics-planning" ? `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}` : "",
       `Registro atual: ${form.title || "Sem titulo"}`,
       `Notas atuais: ${form.notes || "Sem notas"}`,
       `Historico recente do modulo:\n${recentEntries || "Sem historico"}`,
@@ -741,6 +778,13 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
                 <Field label="Dente/regiao"><input value={form.tooth} onChange={(e) => setForm({ ...form, tooth: e.target.value })} /></Field>
                 <Field label="Hipotese diagnostica"><input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} /></Field>
                 <Field label="Canais, testes e observacoes"><textarea rows={4} value={form.canalNotes} onChange={(e) => setForm({ ...form, canalNotes: e.target.value })} /></Field>
+              </>
+            )}
+            {selectedModule.id === "orthodontics-planning" && (
+              <>
+                <Field label="Classe esqueletica / relacao sagital"><input value={form.skeletalClass} onChange={(e) => setForm({ ...form, skeletalClass: e.target.value })} placeholder="Ex.: Classe I, Classe II, Classe III" /></Field>
+                <Field label="Maloclusao e achados principais"><textarea rows={4} value={form.malocclusion} onChange={(e) => setForm({ ...form, malocclusion: e.target.value })} placeholder="Apinhamento, mordida aberta, sobremordida, mordida cruzada..." /></Field>
+                <Field label="Objetivos ortodonticos"><textarea rows={4} value={form.orthodonticObjectives} onChange={(e) => setForm({ ...form, orthodonticObjectives: e.target.value })} placeholder="Alinhamento, nivelamento, correcao transversal, controle vertical..." /></Field>
               </>
             )}
             <Field label="Titulo"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
