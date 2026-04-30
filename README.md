@@ -262,6 +262,23 @@ A Implantodontia tambem e organizada em submodulos comerciais e funcionais. Cada
 
 Campos especificos de cada submodulo de Implantodontia entram no registro e no contexto de IA: submodulo, escopo, regiao/elementos, avaliacao ossea, planejamento protetico, planejamento cirurgico, achados de imagem/CBCT, fatores de risco e manutencao.
 
+A Periodontia tambem e organizada em submodulos comerciais e funcionais, sem tratar essas frentes como subdivisoes formais do CFO. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
+
+- Periodontograma: R$ 99,90/mes;
+- Periodontia preventiva: R$ 69,90/mes;
+- Periodontia clinica: R$ 109,90/mes;
+- Periodontia cirurgica: R$ 139,90/mes;
+- Regeneracao periodontal: R$ 159,90/mes;
+- Periodontia estetica: R$ 139,90/mes;
+- Interface perio-implante: R$ 149,90/mes;
+- Periodontia sistemica: R$ 129,90/mes;
+- Microbiologia e imunologia periodontal: R$ 119,90/mes;
+- Periodontia para pacientes especiais: R$ 139,90/mes;
+- Periodontia de manutencao: R$ 99,90/mes;
+- Periodontia digital / IA: R$ 169,90/mes.
+
+Campos especificos de cada submodulo de Periodontia entram no registro e no contexto de IA: submodulo, escopo, diagnostico periodontal, periodontograma/achados, plano terapeutico periodontal, fatores de risco periodontal, contexto sistemico, plano de manutencao e observacoes.
+
 A Odontologia Estetica/Dentistica Estetica tambem e organizada em submodulos comerciais e funcionais. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
 
 - Planejamento estetico: R$ 109,90/mes;

@@ -337,6 +337,81 @@ const implantologySubmodules = [
   }
 ];
 
+const periodonticSubmodules = [
+  {
+    moduleKey: "periodontics-chart",
+    label: "Periodontograma",
+    description: "Sondagem, mobilidade, recessao, sangramento e acompanhamento periodontal estruturado.",
+    monthlyPrice: 99.9
+  },
+  {
+    moduleKey: "periodontics-preventive",
+    label: "Periodontia preventiva",
+    description: "Controle de placa, profilaxia, orientacao de higiene oral e acompanhamento periodico.",
+    monthlyPrice: 69.9
+  },
+  {
+    moduleKey: "periodontics-clinical",
+    label: "Periodontia clinica",
+    description: "Gengivite, periodontite, raspagem, alisamento radicular e controle de infeccao.",
+    monthlyPrice: 109.9
+  },
+  {
+    moduleKey: "periodontics-surgical",
+    label: "Periodontia cirurgica",
+    description: "Cirurgia de acesso, retalho, reducao de bolsa periodontal e casos avancados.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "periodontics-regeneration",
+    label: "Regeneracao periodontal",
+    description: "ROG, RTG, biomateriais e recuperacao de estruturas periodontais perdidas.",
+    monthlyPrice: 159.9
+  },
+  {
+    moduleKey: "periodontics-aesthetic",
+    label: "Periodontia estetica",
+    description: "Cirurgia plastica periodontal, gengivoplastia, gengivectomia, recobrimento radicular e sorriso gengival.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "periodontics-perio-implant",
+    label: "Interface perio-implante",
+    description: "Preparacao gengival para implantes, manutencao peri-implantar e tratamento de peri-implantite.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "periodontics-systemic",
+    label: "Periodontia sistemica",
+    description: "Relacao entre doenca periodontal, diabetes, doencas cardiovasculares, gravidez e inflamacao sistemica.",
+    monthlyPrice: 129.9
+  },
+  {
+    moduleKey: "periodontics-microbiology-immunology",
+    label: "Microbiologia e imunologia periodontal",
+    description: "Biofilme, resposta inflamatoria e interacao hospedeiro-microrganismo com impacto clinico.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "periodontics-special-patients",
+    label: "Periodontia para pacientes especiais",
+    description: "Pacientes sistemicos, imunocomprometidos, idosos e pessoas com deficiencia.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "periodontics-maintenance",
+    label: "Periodontia de manutencao",
+    description: "Suporte periodontal, acompanhamento continuo, controle de recidiva e manutencao da saude periodontal.",
+    monthlyPrice: 99.9
+  },
+  {
+    moduleKey: "periodontics-digital-ai",
+    label: "Periodontia digital / IA",
+    description: "Monitoramento gengival por imagem, deteccao precoce de inflamacao, risco periodontal e acompanhamento remoto.",
+    monthlyPrice: 169.9
+  }
+];
+
 const aestheticSubmodules = [
   {
     moduleKey: "aesthetic-dentistry",
@@ -1145,6 +1220,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     surgicalPlan: "",
     implantImaging: "",
     implantRiskFactors: "",
+    periodontalDiagnosis: "",
+    periodontalChartFindings: "",
+    periodontalTherapyPlan: "",
+    periodontalRiskFactors: "",
+    periodontalSystemicContext: "",
+    periodontalMaintenancePlan: "",
     smileComplaint: "",
     shadeGoal: "",
     toothShapePlan: "",
@@ -1171,6 +1252,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   const isOrthodonticModule = Boolean(selectedOrthodonticSubmodule);
   const selectedImplantologySubmodule = implantologySubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isImplantologyModule = Boolean(selectedImplantologySubmodule);
+  const selectedPeriodonticSubmodule = periodonticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
+  const isPeriodonticModule = Boolean(selectedPeriodonticSubmodule);
   const selectedAestheticSubmodule = aestheticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isAestheticModule = Boolean(selectedAestheticSubmodule);
   const selectedPediatricSubmodule = pediatricSubmodules.find((item) => item.moduleKey === selectedModule?.id);
@@ -1215,6 +1298,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       surgicalPlan: "",
       implantImaging: "",
       implantRiskFactors: "",
+      periodontalDiagnosis: "",
+      periodontalChartFindings: "",
+      periodontalTherapyPlan: "",
+      periodontalRiskFactors: "",
+      periodontalSystemicContext: "",
+      periodontalMaintenancePlan: "",
       smileComplaint: "",
       shadeGoal: "",
       toothShapePlan: "",
@@ -1270,6 +1359,19 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
         `Planejamento cirurgico: ${form.surgicalPlan || "Nao informado"}`,
         `Achados de imagem/CBCT: ${form.implantImaging || "Nao informado"}`,
         `Fatores de risco e manutencao: ${form.implantRiskFactors || "Nao informado"}`,
+        `Notas gerais: ${form.notes || "Nao informado"}`
+      ].join("\n");
+    }
+    if (isPeriodonticModule) {
+      return [
+        `Submodulo de periodontia: ${selectedPeriodonticSubmodule?.label || "Nao informado"}`,
+        `Escopo: ${selectedPeriodonticSubmodule?.description || "Nao informado"}`,
+        `Diagnostico periodontal: ${form.periodontalDiagnosis || "Nao informado"}`,
+        `Periodontograma/achados: ${form.periodontalChartFindings || "Nao informado"}`,
+        `Plano terapeutico periodontal: ${form.periodontalTherapyPlan || "Nao informado"}`,
+        `Fatores de risco periodontal: ${form.periodontalRiskFactors || "Nao informado"}`,
+        `Contexto sistemico: ${form.periodontalSystemicContext || "Nao informado"}`,
+        `Plano de manutencao: ${form.periodontalMaintenancePlan || "Nao informado"}`,
         `Notas gerais: ${form.notes || "Nao informado"}`
       ].join("\n");
     }
@@ -1330,6 +1432,15 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       isImplantologyModule ? `Planejamento cirurgico: ${form.surgicalPlan || "Nao informado"}` : "",
       isImplantologyModule ? `Achados de imagem/CBCT: ${form.implantImaging || "Nao informado"}` : "",
       isImplantologyModule ? `Fatores de risco e manutencao: ${form.implantRiskFactors || "Nao informado"}` : "",
+      isPeriodonticModule ? "Nota tecnica: Periodontia usa submodulos funcionais e comerciais para organizar prevencao, tratamento clinico, cirurgia, regeneracao, estetica, interface perio-implante, manutencao e IA." : "",
+      isPeriodonticModule ? `Submodulo de periodontia: ${selectedPeriodonticSubmodule?.label || "Nao informado"}` : "",
+      isPeriodonticModule ? `Escopo do submodulo: ${selectedPeriodonticSubmodule?.description || "Nao informado"}` : "",
+      isPeriodonticModule ? `Diagnostico periodontal: ${form.periodontalDiagnosis || "Nao informado"}` : "",
+      isPeriodonticModule ? `Periodontograma/achados: ${form.periodontalChartFindings || "Nao informado"}` : "",
+      isPeriodonticModule ? `Plano terapeutico periodontal: ${form.periodontalTherapyPlan || "Nao informado"}` : "",
+      isPeriodonticModule ? `Fatores de risco periodontal: ${form.periodontalRiskFactors || "Nao informado"}` : "",
+      isPeriodonticModule ? `Contexto sistemico: ${form.periodontalSystemicContext || "Nao informado"}` : "",
+      isPeriodonticModule ? `Plano de manutencao: ${form.periodontalMaintenancePlan || "Nao informado"}` : "",
       isAestheticModule ? "Nota tecnica: Odontologia Estetica/Dentistica Estetica usa submodulos funcionais e comerciais para organizar fluxo, cobranca e analise." : "",
       isAestheticModule ? `Submodulo de odontologia estetica: ${selectedAestheticSubmodule?.label || "Nao informado"}` : "",
       isAestheticModule ? `Escopo do submodulo: ${selectedAestheticSubmodule?.description || "Nao informado"}` : "",
@@ -1447,6 +1558,18 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
                 <Field label="Planejamento cirurgico"><textarea rows={3} value={form.surgicalPlan} onChange={(e) => setForm({ ...form, surgicalPlan: e.target.value })} placeholder="Tecnica, implante imediato, guia cirurgico, sinus lift, split crest..." /></Field>
                 <Field label="Achados de imagem / CBCT"><textarea rows={3} value={form.implantImaging} onChange={(e) => setForm({ ...form, implantImaging: e.target.value })} placeholder="CBCT, canal mandibular, seio maxilar, cortical, defeitos osseos..." /></Field>
                 <Field label="Fatores de risco e manutencao"><textarea rows={3} value={form.implantRiskFactors} onChange={(e) => setForm({ ...form, implantRiskFactors: e.target.value })} placeholder="Tabagismo, diabetes, peri-implantite, higiene, manutencao..." /></Field>
+              </>
+            )}
+            {isPeriodonticModule && (
+              <>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Periodontia e organizada aqui em submodulos comerciais e funcionais para prevencao, tratamento, cirurgia, regeneracao, estetica, interface perio-implante, manutencao e IA.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedPeriodonticSubmodule?.description} Custo do submodulo: {money(selectedPeriodonticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <Field label="Diagnostico periodontal"><input value={form.periodontalDiagnosis} onChange={(e) => setForm({ ...form, periodontalDiagnosis: e.target.value })} placeholder="Ex.: gengivite, periodontite, peri-implantite..." /></Field>
+                <Field label="Periodontograma / achados"><textarea rows={3} value={form.periodontalChartFindings} onChange={(e) => setForm({ ...form, periodontalChartFindings: e.target.value })} placeholder="Sondagem, sangramento, recessao, mobilidade, furca, perda ossea..." /></Field>
+                <Field label="Plano terapeutico periodontal"><textarea rows={3} value={form.periodontalTherapyPlan} onChange={(e) => setForm({ ...form, periodontalTherapyPlan: e.target.value })} placeholder="Profilaxia, raspagem, retalho, regeneracao, recobrimento, biomateriais..." /></Field>
+                <Field label="Fatores de risco periodontal"><textarea rows={3} value={form.periodontalRiskFactors} onChange={(e) => setForm({ ...form, periodontalRiskFactors: e.target.value })} placeholder="Placa, tabagismo, diabetes, higiene, recidiva, resposta inflamatoria..." /></Field>
+                <Field label="Contexto sistemico"><textarea rows={3} value={form.periodontalSystemicContext} onChange={(e) => setForm({ ...form, periodontalSystemicContext: e.target.value })} placeholder="Diabetes, cardiovascular, gravidez, imunossupressao, inflamacao..." /></Field>
+                <Field label="Plano de manutencao"><textarea rows={3} value={form.periodontalMaintenancePlan} onChange={(e) => setForm({ ...form, periodontalMaintenancePlan: e.target.value })} placeholder="Intervalo de suporte periodontal, controle de recidiva, acompanhamento remoto..." /></Field>
               </>
             )}
             {isAestheticModule && (
