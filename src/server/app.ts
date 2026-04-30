@@ -19,6 +19,7 @@ import { auditRouter } from "./routes/audit.routes.js";
 import { accountRouter } from "./routes/account.routes.js";
 import { subscriptionRouter } from "./routes/subscription.routes.js";
 import { examImageRouter } from "./routes/exam-image.routes.js";
+import { moduleWorkspaceRouter } from "./routes/module-workspace.routes.js";
 
 export const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/records", recordRouter);
 app.use("/api/documents", documentRouter);
 app.use("/api/exam-images", examImageRouter);
 app.use("/api/modules", moduleRouter);
+app.use("/api/module-workspace", moduleWorkspaceRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/subscription", subscriptionRouter);

@@ -223,6 +223,8 @@ Os modulos sao organizados por escopo:
 
 Na interface, a tela `Modulos` possui uma aba raiz `Comuns` e abas por especialidade. Cada modulo continua sendo ativavel/desativavel por clinica e participando da cobranca mensal.
 
+Quando uma clinica ativa qualquer modulo de especialidade, o menu `Especialidades` fica disponivel. Essa area mostra apenas os modulos especificos ativos e permite registrar acompanhamentos, notas e status por paciente dentro de cada modulo. Modulos com tela propria, como `IA para imagens de exames`, continuam expondo sua funcionalidade dedicada.
+
 - Pacientes
 - Agenda
 - Prontuario

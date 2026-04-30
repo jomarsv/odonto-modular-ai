@@ -69,6 +69,19 @@ type ExamImage = {
   createdAt: string;
 };
 
+type ModuleItem = {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  category: string;
+  basePrice: string;
+  enabled: boolean;
+  scope?: string | null;
+  specialtyKey?: string | null;
+  specialtyName?: string | null;
+};
+
 const tabs = [
   ["dashboard", "Dashboard"],
   ["patients", "Pacientes"],
@@ -76,6 +89,7 @@ const tabs = [
   ["records", "Prontuario"],
   ["documents", "Documentos"],
   ["examImages", "Exames IA"],
+  ["specialties", "Especialidades"],
   ["users", "Equipe"],
   ["clinic", "Clinica"],
   ["profile", "Perfil"],
@@ -92,6 +106,7 @@ const tabModules: Partial<Record<(typeof tabs)[number][0], string[]>> = {
   records: ["records"],
   documents: ["documents"],
   examImages: ["exam-images-ai"],
+  specialties: [],
   ai: ["ai-basic", "ai-advanced"],
   billing: ["billing"]
 };
@@ -118,10 +133,10 @@ export default function App() {
   const api = useMemo(() => new ApiClient(() => session?.token ?? null), [session]);
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number][0]>("dashboard");
   const [message, setMessage] = useState("");
-  const [modules, setModules] = useState<Array<{ id: string; key: string; enabled: boolean }>>([]);
+  const [modules, setModules] = useState<ModuleItem[]>([]);
 
   useEffect(() => {
-    if (session) api.get<Array<{ id: string; key: string; enabled: boolean }>>("/modules").then(setModules).catch(() => setModules([]));
+    if (session) api.get<ModuleItem[]>("/modules").then(setModules).catch(() => setModules([]));
   }, [api, session]);
 
   if (!session) return <Login onLogin={setSession} />;
@@ -130,6 +145,7 @@ export default function App() {
     if (id === "users") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
     if (id === "clinic") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
     if (id === "audit") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
+    if (id === "specialties") return modules.some((module) => module.enabled && module.scope === "SPECIALTY");
     const required = tabModules[id];
     return !required || required.some((key) => enabledModules.has(key));
   });
@@ -170,6 +186,7 @@ export default function App() {
         {activeTab === "records" && <Records api={api} onSaved={setMessage} />}
         {activeTab === "documents" && <Documents api={api} onSaved={setMessage} />}
         {activeTab === "examImages" && <ExamImages api={api} onSaved={setMessage} />}
+        {activeTab === "specialties" && <Specialties api={api} modules={modules} onSaved={setMessage} />}
         {activeTab === "users" && <Users api={api} onSaved={setMessage} />}
         {activeTab === "clinic" && <ClinicSettings api={api} session={session} setSession={setSession} onSaved={setMessage} />}
         {activeTab === "profile" && <Profile api={api} session={session} setSession={setSession} onSaved={setMessage} />}
@@ -612,19 +629,78 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
   );
 }
 
-function Modules({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
-  type ModuleItem = {
-    id: string;
-    key: string;
-    name: string;
-    description: string;
-    category: string;
-    basePrice: string;
-    enabled: boolean;
-    scope?: string | null;
-    specialtyKey?: string | null;
-    specialtyName?: string | null;
+function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: ModuleItem[]; onSaved: (message: string) => void }) {
+  const activeSpecialtyModules = modules.filter((module) => module.enabled && module.scope === "SPECIALTY");
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedModuleId, setSelectedModuleId] = useState(activeSpecialtyModules[0]?.id ?? "");
+  const [entries, setEntries] = useState<Array<Record<string, any>>>([]);
+  const [form, setForm] = useState({ patientId: "", title: "", notes: "", status: "OPEN" });
+  const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
+  useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
+  const loadEntries = () => {
+    if (selectedModuleId) api.get<Array<Record<string, any>>>(`/module-workspace/${selectedModuleId}`).then(setEntries);
   };
+  useEffect(loadEntries, [api, selectedModuleId]);
+  useEffect(() => {
+    if (!selectedModuleId && activeSpecialtyModules[0]) setSelectedModuleId(activeSpecialtyModules[0].id);
+  }, [activeSpecialtyModules.length, selectedModuleId]);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    await api.post("/module-workspace", {
+      moduleId: selectedModuleId,
+      patientId: form.patientId || undefined,
+      title: form.title,
+      notes: form.notes,
+      status: form.status
+    });
+    setForm({ patientId: "", title: "", notes: "", status: "OPEN" });
+    onSaved("Registro do modulo salvo.");
+    loadEntries();
+  }
+  if (!activeSpecialtyModules.length) return <Section title="Especialidades"><p>Nenhum modulo de especialidade ativo.</p></Section>;
+  return (
+    <Section title="Especialidades">
+      <div className="mb-4 flex gap-2 overflow-x-auto border-b border-slate-200 pb-2">
+        {activeSpecialtyModules.map((module) => (
+          <button key={module.id} className={selectedModuleId === module.id ? "btn-primary whitespace-nowrap" : "btn-secondary whitespace-nowrap"} onClick={() => setSelectedModuleId(module.id)}>
+            {module.name}
+          </button>
+        ))}
+      </div>
+      {selectedModule && (
+        <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
+          <form onSubmit={save} className="panel space-y-3 p-4">
+            <div>
+              <p className="text-xs font-semibold text-primary-700">{selectedModule.specialtyName}</p>
+              <h3 className="font-semibold">{selectedModule.name}</h3>
+              <p className="mt-1 text-sm text-slate-500">{selectedModule.description}</p>
+            </div>
+            {selectedModule.id === "exam-images-ai" && <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">Este modulo tambem possui a tela dedicada Exames IA para upload e analise visual real.</p>}
+            <Field label="Paciente"><select value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}><option value="">Sem paciente</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.fullName}</option>)}</select></Field>
+            <Field label="Titulo"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
+            <Field label="Status"><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{["OPEN", "IN_PROGRESS", "DONE"].map((status) => <option key={status}>{status}</option>)}</select></Field>
+            <Field label="Notas do modulo"><textarea required rows={6} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
+            <button className="btn-primary">Salvar registro</button>
+          </form>
+          <div className="panel overflow-hidden">
+            <Table headers={["Data", "Paciente", "Titulo", "Status"]}>
+              {entries.map((entry) => (
+                <tr key={String(entry.id)}>
+                  <td>{entry.createdAt ? new Date(String(entry.createdAt)).toLocaleString("pt-BR") : ""}</td>
+                  <td>{String(entry.patient?.fullName ?? "-")}</td>
+                  <td><p className="font-medium">{String(entry.title)}</p><p className="text-xs text-slate-500">{String(entry.notes)}</p></td>
+                  <td>{String(entry.status)}</td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function Modules({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [activeGroup, setActiveGroup] = useState("common");
   const load = () => api.get<typeof modules>("/modules").then(setModules);
