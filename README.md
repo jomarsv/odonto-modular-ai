@@ -230,6 +230,8 @@ Todos os modulos de especialidade ativos possuem acoes de IA:
 - `Analisar IA`: gera uma analise tecnica do contexto do modulo;
 - `Perguntar IA`: responde uma pergunta livre com base no paciente, modulo e historico recente.
 
+Perguntas para IA sao cobradas por pergunta realizada, independentemente da especialidade perguntada estar ativa como modulo. Isso permite que uma clinica assine uma especialidade especifica, mas ainda faca perguntas pontuais sobre outras areas usando a tela `Uso de IA`. No MVP, `specialty-question` gera um evento `AI_QUESTION` e aplica uma cobranca minima por pergunta, alem do registro de tokens em `AIUsageLog`.
+
 O modulo `Planejamento endodontico` possui campos especificos para dente/regiao, hipotese diagnostica, canais, testes e observacoes, usados como contexto para a IA.
 
 O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
@@ -307,6 +309,13 @@ Funcoes disponiveis:
 - `specialty-question`
 
 Se nao houver provider real configurado, o servico usa mock seguro, estima tokens, calcula custo, grava `AIUsageLog` e cria `BillingEvent`.
+
+Politica de cobranca da IA no MVP:
+
+- analises e geracoes comuns sao cobradas por consumo estimado de tokens;
+- perguntas livres por especialidade usam `specialty-question` e sao cobradas por pergunta;
+- cada pergunta gera `BillingEvent` do tipo `AI_QUESTION`;
+- a fatura estimada separa `IA por tokens` de `Perguntas IA`.
 
 Aviso exibido em conteudos clinicos:
 

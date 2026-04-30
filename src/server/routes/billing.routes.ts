@@ -45,7 +45,8 @@ billingRouter.get(
       { type: "BASE_PLAN", description: "Plano base mensal", amount: estimate.basePlanPrice },
       { type: "MODULES", description: "Mensalidade dos modulos ativos", amount: estimate.activeModulesPrice },
       { type: "STORAGE", description: "Consumo estimado de armazenamento", amount: estimate.storagePrice },
-      { type: "AI_USAGE", description: "Consumo de IA no ciclo", amount: estimate.aiUsagePrice },
+      { type: "AI_USAGE", description: "Consumo de IA por tokens no ciclo", amount: estimate.aiOtherUsagePrice },
+      { type: "AI_QUESTIONS", description: `Perguntas para IA no ciclo (${estimate.aiQuestionsThisMonth})`, amount: estimate.aiQuestionPrice },
       { type: "SECURITY", description: "Recursos de seguranca", amount: estimate.securityPrice }
     ].filter((item) => Number(item.amount) > 0);
 

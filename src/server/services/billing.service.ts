@@ -24,6 +24,16 @@ const modelRates: Record<string, { input: number; output: number }> = {
   "gpt-4.1-mini": { input: 0.0000004, output: 0.0000016 }
 };
 
+const featureMinimumCharges: Record<string, number> = {
+  "specialty-question": 0.5
+};
+
+const questionFeatureKeys = new Set(["specialty-question"]);
+
+export function isAIQuestionFeature(featureKey: string) {
+  return questionFeatureKeys.has(featureKey);
+}
+
 export function estimateAICost(input: {
   inputTokens: number;
   outputTokens: number;
@@ -33,7 +43,9 @@ export function estimateAICost(input: {
 }) {
   const rates = modelRates[input.modelName] ?? modelRates["mock-standard"];
   const multiplier = precisionMultipliers[input.precisionLevel];
-  return Number(((input.inputTokens * rates.input + input.outputTokens * rates.output) * multiplier).toFixed(4));
+  const tokenCost = (input.inputTokens * rates.input + input.outputTokens * rates.output) * multiplier;
+  const minimumCharge = featureMinimumCharges[input.featureKey] ?? 0;
+  return Number(Math.max(tokenCost, minimumCharge).toFixed(4));
 }
 
 export async function createAIConsumptionBillingEvent(input: {
@@ -43,12 +55,13 @@ export async function createAIConsumptionBillingEvent(input: {
   totalTokens: number;
   usageLogId: string;
 }) {
+  const isQuestion = isAIQuestionFeature(input.featureKey);
   await addDoc(collectionNames.billingEvents, {
     clinicId: input.clinicId,
-    eventType: "AI_USAGE",
-    description: `Consumo de IA: ${input.featureKey}`,
+    eventType: isQuestion ? "AI_QUESTION" : "AI_USAGE",
+    description: isQuestion ? `Pergunta para IA: ${input.featureKey}` : `Consumo de IA: ${input.featureKey}`,
     amount: input.amount,
-    metadata: { usageLogId: input.usageLogId, totalTokens: input.totalTokens },
+    metadata: { usageLogId: input.usageLogId, totalTokens: input.totalTokens, billableUnit: isQuestion ? "QUESTION" : "TOKENS" },
     createdAt: now()
   });
 }
@@ -101,6 +114,9 @@ export async function getMonthlyEstimate(clinicId: string) {
   const basePlanPrice = 199;
   const activeModulesPrice = clinicModules.reduce((sum, item) => sum + Number(item.module?.basePrice ?? 0), 0);
   const aiUsagePrice = aiUsageRows.reduce((sum, item) => sum + Number(item.estimatedCost ?? 0), 0);
+  const aiQuestionRows = aiUsageRows.filter((item) => isAIQuestionFeature(String(item.featureKey ?? "")));
+  const aiQuestionPrice = aiQuestionRows.reduce((sum, item) => sum + Number(item.estimatedCost ?? 0), 0);
+  const aiOtherUsagePrice = Number((aiUsagePrice - aiQuestionPrice).toFixed(2));
   const storageMb = documentRows.reduce((sum, item) => sum + Number(item.fileSize ?? 0), 0) / 1024 / 1024;
   const storagePrice = Number((storageMb * 0.05).toFixed(2));
   const securityPrice = clinicModules.some((item) => item.module?.key === "security-advanced") ? 49.9 : 0;
@@ -114,6 +130,9 @@ export async function getMonthlyEstimate(clinicId: string) {
     activeModulesPrice,
     storagePrice,
     aiUsagePrice,
+    aiQuestionPrice,
+    aiOtherUsagePrice,
+    aiQuestionsThisMonth: aiQuestionRows.length,
     securityPrice,
     monthlyPrice,
     aiTokensThisMonth: aiUsageRows.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0),

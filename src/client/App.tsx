@@ -1080,16 +1080,16 @@ function AIUsage({ api, onSaved }: { api: ApiClient; onSaved: (message: string) 
     <Section title="Uso de IA">
       <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
         <form onSubmit={generate} className="panel space-y-3 p-4">
-          <Field label="Funcao"><select value={form.featureKey} onChange={(e) => setForm({ ...form, featureKey: e.target.value })}><option value="record-summary">Resumo do prontuario</option><option value="clinical-report">Relatorio clinico</option><option value="patient-guidance">Orientacao ao paciente</option></select></Field>
+          <Field label="Funcao"><select value={form.featureKey} onChange={(e) => setForm({ ...form, featureKey: e.target.value })}><option value="record-summary">Resumo do prontuario</option><option value="clinical-report">Relatorio clinico</option><option value="patient-guidance">Orientacao ao paciente</option><option value="specialty-question">Pergunta livre por especialidade</option></select></Field>
           <Field label="Precisao"><select value={form.precisionLevel} onChange={(e) => setForm({ ...form, precisionLevel: e.target.value })}>{["BASIC", "STANDARD", "ADVANCED", "SPECIALIST"].map((p) => <option key={p}>{p}</option>)}</select></Field>
           <Field label="Paciente"><select value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}><option value="">Sem paciente</option>{patients.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}</select></Field>
           <Field label="Entrada"><textarea required rows={7} value={form.input} onChange={(e) => setForm({ ...form, input: e.target.value })} /></Field>
           <button className="btn-primary">Gerar com IA</button>
-          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Conteudo gerado por inteligencia artificial para apoio profissional. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
+          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Perguntas para IA sao cobradas por pergunta realizada, mesmo quando o assunto envolver uma especialidade cujo modulo nao esteja ativo. Conteudo gerado por IA e apoio profissional; a decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
         </form>
         <div className="space-y-4">
           {result && <pre className="panel whitespace-pre-wrap p-4 text-sm">{result}</pre>}
-          <div className="panel overflow-hidden"><Table headers={["Funcao", "Precisao", "Tokens", "Custo"]}>{logs.map((log) => <tr key={String(log.id)}><td>{String(log.featureKey)}</td><td>{String(log.precisionLevel)}</td><td>{String(log.totalTokens)}</td><td>{money(String(log.estimatedCost))}</td></tr>)}</Table></div>
+          <div className="panel overflow-hidden"><Table headers={["Funcao", "Tipo", "Precisao", "Tokens", "Custo"]}>{logs.map((log) => <tr key={String(log.id)}><td>{String(log.featureKey)}</td><td>{String(log.featureKey) === "specialty-question" ? "Pergunta cobrada" : "Consumo"}</td><td>{String(log.precisionLevel)}</td><td>{String(log.totalTokens)}</td><td>{money(String(log.estimatedCost))}</td></tr>)}</Table></div>
         </div>
       </div>
     </Section>
@@ -1139,14 +1139,16 @@ function Billing({ api }: { api: ApiClient }) {
     <Section title="Fatura estimada">
       <div className="panel mb-4 p-4 text-sm text-slate-600">
         <p className="font-semibold text-slate-900">Politica: mensalidade por ciclo, sem pro-rata no MVP.</p>
-        <p>Ativacao cobra o modulo no ciclo atual. Desativacao remove renovacao no proximo ciclo. IA e storage entram como consumo.</p>
+        <p>Ativacao cobra o modulo no ciclo atual. Desativacao remove renovacao no proximo ciclo. IA, perguntas para IA e storage entram como consumo.</p>
+        <p>Perguntas para IA sao cobradas por pergunta, independentemente da especialidade perguntada estar ativa como modulo.</p>
         <p className="mt-2">Ciclo atual: {new Date(String(estimate.cycleStart)).toLocaleDateString("pt-BR")} ate {new Date(String(estimate.cycleEnd)).toLocaleDateString("pt-BR")}</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Price label="Plano base" value={estimate.basePlanPrice} />
         <Price label="Mensalidade dos modulos" value={estimate.activeModulesPrice} />
         <Price label="Storage do ciclo" value={estimate.storagePrice} />
-        <Price label="Consumo de IA" value={estimate.aiUsagePrice} />
+        <Price label="IA por tokens" value={estimate.aiOtherUsagePrice ?? estimate.aiUsagePrice} />
+        <Price label={`Perguntas IA (${estimate.aiQuestionsThisMonth ?? 0})`} value={estimate.aiQuestionPrice ?? 0} />
         <Price label="Seguranca" value={estimate.securityPrice} />
         <Price label="Total estimado" value={estimate.monthlyPrice} highlight />
       </div>
