@@ -187,6 +187,87 @@ const endodonticSubmodules = [
   }
 ];
 
+const orthodonticSubmodules = [
+  {
+    moduleKey: "orthodontics-planning",
+    label: "Planejamento ortodontico",
+    description: "Base para documentacao ortodontica, objetivos, acompanhamento e contexto geral do caso.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "orthodontics-preventive",
+    label: "Ortodontia preventiva",
+    description: "Identificacao de habitos deleterios, orientacao de crescimento e intervencoes simples para evitar mas oclusoes.",
+    monthlyPrice: 79.9
+  },
+  {
+    moduleKey: "orthodontics-interceptive",
+    label: "Ortodontia interceptiva",
+    description: "Correcao de alteracoes iniciais, aparelhos removiveis e controle do crescimento em criancas e pre-adolescentes.",
+    monthlyPrice: 99.9
+  },
+  {
+    moduleKey: "orthodontics-corrective",
+    label: "Ortodontia corretiva",
+    description: "Aparelhos fixos, alinhamento dentario completo, correcao de oclusao e casos simples a complexos.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "orthodontics-functional-orthopedics",
+    label: "Ortopedia funcional dos maxilares",
+    description: "Modificacao do crescimento facial, aparelhos ortopedicos e intervencoes em idade de crescimento.",
+    monthlyPrice: 129.9
+  },
+  {
+    moduleKey: "orthodontics-aesthetic",
+    label: "Ortodontia estetica",
+    description: "Aparelhos esteticos, ceramica, safira, linguais e alinhadores transparentes.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "orthodontics-digital",
+    label: "Ortodontia digital",
+    description: "Escaneamento intraoral, planejamento digital, simulacao de tratamento e impressao 3D.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "orthodontics-aligners",
+    label: "Ortodontia com alinhadores",
+    description: "Clear aligners, aparelhos removiveis transparentes e planejamento totalmente digital.",
+    monthlyPrice: 159.9
+  },
+  {
+    moduleKey: "orthodontics-surgical",
+    label: "Ortodontia cirurgica",
+    description: "Tratamento combinado com cirurgia ortognatica e correcao de discrepancias esqueleticas severas.",
+    monthlyPrice: 179.9
+  },
+  {
+    moduleKey: "orthodontics-lingual",
+    label: "Ortodontia lingual",
+    description: "Aparelhos na face interna dos dentes, com foco em tratamento invisivel externamente.",
+    monthlyPrice: 169.9
+  },
+  {
+    moduleKey: "orthodontics-myofunctional",
+    label: "Ortodontia funcional miofuncional",
+    description: "Reeducacao muscular e correcao de funcoes como degluticao, respiracao e postura oral.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "orthodontics-biological-personalized",
+    label: "Ortodontia biologica / personalizada",
+    description: "Tratamentos individualizados, respeito a biologia do paciente e minimizacao de danos.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "orthodontics-ai",
+    label: "Ortodontia com inteligencia artificial",
+    description: "Predicao de movimento dentario, planejamento automatico, simulacao de resultados e ajustes dinamicos.",
+    monthlyPrice: 189.9
+  }
+];
+
 const implantologySubmodules = [
   {
     moduleKey: "implantology-planning",
@@ -1086,6 +1167,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
   const selectedEndodonticSubmodule = endodonticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isEndodonticModule = Boolean(selectedEndodonticSubmodule);
+  const selectedOrthodonticSubmodule = orthodonticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
+  const isOrthodonticModule = Boolean(selectedOrthodonticSubmodule);
   const selectedImplantologySubmodule = implantologySubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isImplantologyModule = Boolean(selectedImplantologySubmodule);
   const selectedAestheticSubmodule = aestheticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
@@ -1167,8 +1250,10 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
         `Notas gerais: ${form.notes || "Nao informado"}`
       ].join("\n");
     }
-    if (selectedModule?.id === "orthodontics-planning") {
+    if (isOrthodonticModule) {
       return [
+        `Submodulo de ortodontia: ${selectedOrthodonticSubmodule?.label || "Nao informado"}`,
+        `Escopo: ${selectedOrthodonticSubmodule?.description || "Nao informado"}`,
         `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}`,
         `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}`,
         `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}`,
@@ -1263,9 +1348,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       isPediatricModule ? `Manejo comportamental: ${form.behaviorManagement || "Nao informado"}` : "",
       isPediatricModule ? `Achados clinicos pediatricos: ${form.pediatricClinicalFindings || "Nao informado"}` : "",
       isPediatricModule ? `Fatores de risco e necessidades especiais: ${form.pediatricRiskFactors || "Nao informado"}` : "",
-      selectedModule?.id === "orthodontics-planning" ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
-      selectedModule?.id === "orthodontics-planning" ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
-      selectedModule?.id === "orthodontics-planning" ? `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}` : "",
+      isOrthodonticModule ? "Nota tecnica: Ortodontia usa submodulos funcionais e comerciais para organizar prevencao, interceptacao, correcao, estetica, tecnologia, cirurgia e IA." : "",
+      isOrthodonticModule ? `Submodulo de ortodontia: ${selectedOrthodonticSubmodule?.label || "Nao informado"}` : "",
+      isOrthodonticModule ? `Escopo do submodulo: ${selectedOrthodonticSubmodule?.description || "Nao informado"}` : "",
+      isOrthodonticModule ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
+      isOrthodonticModule ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
+      isOrthodonticModule ? `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}` : "",
       `Registro atual: ${form.title || "Sem titulo"}`,
       `Notas atuais: ${form.notes || "Sem notas"}`,
       `Historico recente do modulo:\n${recentEntries || "Sem historico"}`,
@@ -1340,8 +1428,10 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
                 <Field label="Canais, testes e observacoes"><textarea rows={4} value={form.canalNotes} onChange={(e) => setForm({ ...form, canalNotes: e.target.value })} /></Field>
               </>
             )}
-            {selectedModule.id === "orthodontics-planning" && (
+            {isOrthodonticModule && (
               <>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Ortodontia e organizada aqui em submodulos comerciais e funcionais para prevencao, interceptacao, correcao, estetica, tecnologia, cirurgia e IA.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedOrthodonticSubmodule?.description} Custo do submodulo: {money(selectedOrthodonticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
                 <Field label="Classe esqueletica / relacao sagital"><input value={form.skeletalClass} onChange={(e) => setForm({ ...form, skeletalClass: e.target.value })} placeholder="Ex.: Classe I, Classe II, Classe III" /></Field>
                 <Field label="Maloclusao e achados principais"><textarea rows={4} value={form.malocclusion} onChange={(e) => setForm({ ...form, malocclusion: e.target.value })} placeholder="Apinhamento, mordida aberta, sobremordida, mordida cruzada..." /></Field>
                 <Field label="Objetivos ortodonticos"><textarea rows={4} value={form.orthodonticObjectives} onChange={(e) => setForm({ ...form, orthodonticObjectives: e.target.value })} placeholder="Alinhamento, nivelamento, correcao transversal, controle vertical..." /></Field>

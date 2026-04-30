@@ -294,7 +294,23 @@ A Odontopediatria tambem e organizada em submodulos comerciais e funcionais. Cad
 
 Campos especificos de cada submodulo de Odontopediatria entram no registro e no contexto de IA: submodulo, escopo, idade/fase infantil, orientacao aos pais/responsaveis, prevencao/dieta/higiene, manejo comportamental, achados clinicos pediatricos, fatores de risco, necessidades especiais e observacoes.
 
-O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
+A Ortodontia tambem e organizada em submodulos comerciais e funcionais. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
+
+- Planejamento ortodontico: R$ 119,90/mes;
+- Ortodontia preventiva: R$ 79,90/mes;
+- Ortodontia interceptiva: R$ 99,90/mes;
+- Ortodontia corretiva: R$ 119,90/mes;
+- Ortopedia funcional dos maxilares: R$ 129,90/mes;
+- Ortodontia estetica: R$ 139,90/mes;
+- Ortodontia digital: R$ 149,90/mes;
+- Ortodontia com alinhadores: R$ 159,90/mes;
+- Ortodontia cirurgica: R$ 179,90/mes;
+- Ortodontia lingual: R$ 169,90/mes;
+- Ortodontia funcional miofuncional: R$ 119,90/mes;
+- Ortodontia biologica / personalizada: R$ 139,90/mes;
+- Ortodontia com inteligencia artificial: R$ 189,90/mes.
+
+Campos especificos de cada submodulo de Ortodontia entram no registro e no contexto de IA: submodulo, escopo, classe esqueletica/relacao sagital, maloclusao e achados principais, objetivos ortodonticos e observacoes.
 
 ### Balcao LEO-Tech de funcionalidades personalizadas
 
