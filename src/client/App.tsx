@@ -64,6 +64,7 @@ type ExamImage = {
   fileUrl: string;
   fileSize: number;
   analysisStatus: string;
+  analysisProvider?: string | null;
   analysisResult?: string | null;
   createdAt: string;
 };
@@ -523,12 +524,12 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
     load();
   }
   async function analyze(examId: string) {
-    const response = await api.post<{ exam: ExamImage; analysis: { text: string } }>(`/exam-images/${examId}/analyze`, {
+    const response = await api.post<{ exam: ExamImage; analysis: { text: string; provider: string } }>(`/exam-images/${examId}/analyze`, {
       precisionLevel: form.precisionLevel,
       clinicalQuestion: form.clinicalQuestion
     });
     setSelectedResult(response.analysis.text);
-    onSaved("Analise de imagem registrada.");
+    onSaved(response.analysis.provider === "openai" ? "Analise visual real registrada." : "Analise mock registrada.");
     load();
   }
   return (
@@ -541,7 +542,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
           <Field label="Precisao da analise"><select value={form.precisionLevel} onChange={(e) => setForm({ ...form, precisionLevel: e.target.value })}>{["STANDARD", "ADVANCED", "SPECIALIST"].map((level) => <option key={level}>{level}</option>)}</select></Field>
           <Field label="Imagem"><input required type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
           <button className="btn-primary">Enviar imagem</button>
-          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Conteudo gerado por inteligencia artificial para apoio profissional. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
+          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">A IA pode interpretar pixels quando OpenAI estiver configurada. O resultado e apoio profissional, nao laudo definitivo. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
         </form>
         <div className="space-y-4">
           <div className="panel overflow-hidden">
@@ -549,7 +550,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
               {exams.map((exam) => (
                 <tr key={exam.id}>
                   <td><p className="font-medium">{exam.examType}</p><p className="text-xs text-slate-500">{exam.fileName}</p></td>
-                  <td>{exam.analysisStatus}</td>
+                  <td><p>{exam.analysisStatus}</p><p className="text-xs text-slate-500">{exam.analysisProvider || "pendente"}</p></td>
                   <td><a className="text-primary-700" href={exam.fileUrl} target="_blank">Abrir</a></td>
                   <td><button className="btn-secondary" onClick={() => analyze(exam.id)}>Analisar</button></td>
                 </tr>

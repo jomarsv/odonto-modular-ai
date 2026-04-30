@@ -8,7 +8,7 @@ import { addDoc, collectionNames, db, getById, now, serializeDocs, updateDoc } f
 import { aiPrecisionLevels } from "../domain.js";
 import { authenticate } from "../middleware/auth.js";
 import { requireModule } from "../middleware/modules.js";
-import { generateText } from "../services/ai.service.js";
+import { analyzeExamImage } from "../services/vision-ai.service.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
@@ -70,6 +70,7 @@ examImageRouter.post(
       fileName: req.file.originalname,
       fileType: req.file.mimetype,
       fileUrl: `/uploads/${path.basename(req.file.path)}`,
+      filePath: req.file.path,
       fileSize: req.file.size,
       analysisStatus: "PENDING",
       analysisResult: null,
@@ -92,28 +93,23 @@ examImageRouter.post(
     const patient = await getById<Record<string, unknown>>(collectionNames.patients, String(exam.patientId));
     if (!patient || patient.clinicId !== user.clinicId) throw new HttpError(404, "Paciente nao encontrado.");
 
-    const input = [
-      `Paciente: ${patient.fullName}`,
-      `Tipo de exame: ${exam.examType}`,
-      `Arquivo: ${exam.fileName}`,
-      `MIME: ${exam.fileType}`,
-      `Tamanho: ${exam.fileSize} bytes`,
-      `Pergunta clinica: ${data.clinicalQuestion || exam.clinicalQuestion || "Nao informada"}`,
-      "Observacao tecnica: no MVP a IA nao interpreta pixels reais; a analise e simulada e deve ser substituida por provider multimodal em versao futura."
-    ].join("\n");
-
-    const analysis = await generateText({
-      featureKey: "exam-image-analysis",
+    const analysis = await analyzeExamImage({
       precisionLevel: data.precisionLevel,
-      input,
       userId: user.id,
       clinicId: user.clinicId,
-      patientId: String(exam.patientId)
+      patientId: String(exam.patientId),
+      patientName: String(patient.fullName ?? ""),
+      examType: String(exam.examType ?? "Imagem odontologica"),
+      fileName: String(exam.fileName ?? ""),
+      fileType: String(exam.fileType ?? "image/jpeg"),
+      filePath: typeof exam.filePath === "string" ? exam.filePath : null,
+      clinicalQuestion: data.clinicalQuestion || String(exam.clinicalQuestion ?? "")
     });
 
     const updated = await updateDoc(collectionNames.examImages, examId, {
       analysisStatus: "COMPLETED",
       analysisResult: analysis.text,
+      analysisProvider: analysis.provider,
       precisionLevel: data.precisionLevel,
       analyzedById: user.id,
       analyzedAt: now()

@@ -100,6 +100,8 @@ AI_MODEL_BASIC=mock-basic
 AI_MODEL_STANDARD=mock-standard
 AI_MODEL_ADVANCED=mock-advanced
 AI_MODEL_SPECIALIST=mock-specialist
+OPENAI_API_KEY=sk-...
+OPENAI_VISION_MODEL=gpt-4.1-mini
 PAYMENT_PROVIDER=mock
 PAYMENT_WEBHOOK_SECRET=uma-string-secreta-para-webhooks
 STRIPE_SECRET_KEY=sk_live_ou_sk_test
@@ -139,6 +141,8 @@ npx vercel@latest env add AI_MODEL_BASIC production
 npx vercel@latest env add AI_MODEL_STANDARD production
 npx vercel@latest env add AI_MODEL_ADVANCED production
 npx vercel@latest env add AI_MODEL_SPECIALIST production
+npx vercel@latest env add OPENAI_API_KEY production
+npx vercel@latest env add OPENAI_VISION_MODEL production
 npx vercel@latest env add PAYMENT_PROVIDER production
 npx vercel@latest env add PAYMENT_WEBHOOK_SECRET production
 npx vercel@latest env add STRIPE_SECRET_KEY production
@@ -286,10 +290,20 @@ O modulo `exam-images-ai` adiciona a tela `Exames IA`, com:
 - tipo de exame e pergunta clinica;
 - listagem de imagens por paciente;
 - analise assistida por IA;
+- interpretacao de pixels por modelo multimodal quando `OPENAI_API_KEY` estiver configurada;
 - registro de consumo em `AIUsageLog`;
 - evento de cobranca em `BillingEvent`.
 
-No MVP, a analise de imagem e mock segura: o sistema ainda nao interpreta pixels reais nem substitui laudo profissional. A arquitetura esta pronta para trocar o mock por um provider multimodal no servico de IA.
+Para ativar visao computacional real, configure:
+
+```text
+OPENAI_API_KEY=sk-...
+OPENAI_VISION_MODEL=gpt-4.1-mini
+```
+
+Quando configurado, o backend le o arquivo da imagem, envia os pixels em Base64 para o modelo multimodal e gera um relatorio com qualidade tecnica, achados visuais, hipoteses diagnosticas assistivas, limitacoes e proximos passos. Se a chave nao estiver configurada ou o arquivo nao estiver disponivel no runtime, o sistema volta ao mock seguro.
+
+Importante: o relatorio nao e laudo definitivo nem substitui especialista. A OpenAI documenta que modelos de visao tem limitacoes para imagens medicas especializadas; por isso o app apresenta resultados como apoio e exige revisao por cirurgiao-dentista habilitado.
 
 ## Cobranca
 
@@ -438,7 +452,7 @@ src/
 ## Limitacoes do MVP
 
 - A IA real ainda nao esta conectada a um provider externo.
-- A analise de imagens de exames ainda e simulada; nao realiza diagnostico por visao computacional real.
+- A analise de imagens depende de `OPENAI_API_KEY` e da disponibilidade do arquivo no runtime. Em Vercel, uploads em `/tmp` nao sao armazenamento persistente; para uso real, trocar por S3, Firebase Storage ou equivalente.
 - Upload usa armazenamento local em desenvolvimento e `/tmp` em Vercel; arquivos nao sao persistentes entre execucoes serverless.
 - Nao ha gateway de pagamento.
 - O checkout de assinatura ainda e mock; nao captura cartao nem boleto.

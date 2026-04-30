@@ -7,6 +7,8 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET ?? "dev-secret-change-me",
   uploadDir: process.env.UPLOAD_DIR ?? (process.env.VERCEL ? "/tmp/uploads" : "./uploads"),
   aiProvider: process.env.AI_PROVIDER ?? "mock",
+  openaiApiKey: process.env.OPENAI_API_KEY ?? "",
+  openaiVisionModel: process.env.OPENAI_VISION_MODEL ?? "gpt-4.1-mini",
   paymentProvider: process.env.PAYMENT_PROVIDER ?? "mock",
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
