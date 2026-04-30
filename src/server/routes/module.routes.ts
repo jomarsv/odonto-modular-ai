@@ -10,26 +10,29 @@ export const moduleRouter = Router();
 moduleRouter.use(authenticate);
 
 const availableModules = [
-  ["patients", "Pacientes", "Cadastro, busca e perfil de pacientes.", "CLINICAL", 0],
-  ["appointments", "Agenda", "Consultas, filtros e status de atendimento.", "ADMINISTRATIVE", 0],
-  ["records", "Prontuario", "Prontuario odontologico basico e historico clinico.", "CLINICAL", 0],
-  ["documents", "Documentos", "Upload logico de documentos e imagens.", "ADMINISTRATIVE", 39.9],
-  ["ai-basic", "IA Basica", "Mensagens e resumos simples com consumo medido.", "AI", 79.9],
-  ["ai-advanced", "IA Avancada", "Relatorios mais detalhados e contexto ampliado.", "AI", 149.9],
-  ["exam-images-ai", "IA para imagens de exames", "Upload de imagens odontologicas e analise assistida por IA.", "AI", 199.9],
-  ["billing", "Cobranca", "Estimativa mensal por modulos e consumo.", "FINANCIAL", 0],
-  ["security-advanced", "Seguranca avancada", "Base futura para MFA, trilhas e politicas.", "SECURITY", 49.9]
+  { key: "patients", name: "Pacientes", description: "Cadastro, busca e perfil de pacientes.", category: "CLINICAL", basePrice: 0, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "appointments", name: "Agenda", description: "Consultas, filtros e status de atendimento.", category: "ADMINISTRATIVE", basePrice: 0, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "records", name: "Prontuario", description: "Prontuario odontologico basico e historico clinico.", category: "CLINICAL", basePrice: 0, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "documents", name: "Documentos", description: "Upload logico de documentos e imagens.", category: "ADMINISTRATIVE", basePrice: 39.9, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "ai-basic", name: "IA Basica", description: "Mensagens e resumos simples com consumo medido.", category: "AI", basePrice: 79.9, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "ai-advanced", name: "IA Avancada", description: "Relatorios mais detalhados e contexto ampliado.", category: "AI", basePrice: 149.9, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "billing", name: "Cobranca", description: "Estimativa mensal por modulos e consumo.", category: "FINANCIAL", basePrice: 0, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "security-advanced", name: "Seguranca avancada", description: "Base futura para MFA, trilhas e politicas.", category: "SECURITY", basePrice: 49.9, scope: "COMMON", specialtyKey: null, specialtyName: null },
+  { key: "exam-images-ai", name: "IA para imagens de exames", description: "Upload de imagens odontologicas e analise assistida por IA.", category: "AI", basePrice: 199.9, scope: "SPECIALTY", specialtyKey: "radiology", specialtyName: "Radiologia odontologica" },
+  { key: "radiology-reports", name: "Laudos radiologicos", description: "Base para laudos de radiografias, tomografias e anexos de imagem.", category: "SPECIALTY", basePrice: 129.9, scope: "SPECIALTY", specialtyKey: "radiology", specialtyName: "Radiologia odontologica" },
+  { key: "endodontics-planning", name: "Planejamento endodontico", description: "Ficha de canais, dor pulpar, testes e acompanhamento endodontico.", category: "SPECIALTY", basePrice: 89.9, scope: "SPECIALTY", specialtyKey: "endodontics", specialtyName: "Endodontia" },
+  { key: "orthodontics-planning", name: "Planejamento ortodontico", description: "Base para documentacao ortodontica, objetivos e acompanhamento.", category: "SPECIALTY", basePrice: 119.9, scope: "SPECIALTY", specialtyKey: "orthodontics", specialtyName: "Ortodontia" },
+  { key: "implantology-planning", name: "Planejamento de implantes", description: "Base para planejamento cirurgico-protetico e checklist de implantes.", category: "SPECIALTY", basePrice: 149.9, scope: "SPECIALTY", specialtyKey: "implantology", specialtyName: "Implantodontia" },
+  { key: "periodontics-chart", name: "Periodontograma", description: "Estrutura futura para sondagem, mobilidade, recessao e sangramento.", category: "SPECIALTY", basePrice: 99.9, scope: "SPECIALTY", specialtyKey: "periodontics", specialtyName: "Periodontia" },
+  { key: "pediatric-dentistry", name: "Odontopediatria", description: "Fluxos de atendimento infantil, responsaveis, comportamento e prevencao.", category: "SPECIALTY", basePrice: 79.9, scope: "SPECIALTY", specialtyKey: "pediatric", specialtyName: "Odontopediatria" },
+  { key: "aesthetic-dentistry", name: "Odontologia estetica", description: "Planejamento estetico, fotografias, mockups e acompanhamento.", category: "SPECIALTY", basePrice: 109.9, scope: "SPECIALTY", specialtyKey: "aesthetics", specialtyName: "Odontologia estetica" }
 ] as const;
 
 async function ensureAvailableModules() {
   await Promise.all(
-    availableModules.map(([key, name, description, category, basePrice]) =>
-      setDoc(collectionNames.modules, key, {
-        key,
-        name,
-        description,
-        category,
-        basePrice,
+    availableModules.map((module) =>
+      setDoc(collectionNames.modules, module.key, {
+        ...module,
         isActive: true,
         updatedAt: now()
       })
@@ -47,9 +50,13 @@ moduleRouter.get(
       db().collection(collectionNames.clinicModules).where("clinicId", "==", user.clinicId).get()
     ]);
     const clinicModules = serializeDocs<Record<string, unknown>>(clinicModulesSnapshot);
-    const modules = serializeDocs<Record<string, unknown>>(modulesSnapshot).sort((a, b) =>
-      `${a.category ?? ""}${a.name ?? ""}`.localeCompare(`${b.category ?? ""}${b.name ?? ""}`)
-    );
+    const modules = serializeDocs<Record<string, unknown>>(modulesSnapshot).sort((a, b) => {
+      const scopeA = String(a.scope ?? "COMMON");
+      const scopeB = String(b.scope ?? "COMMON");
+      return `${scopeA}${a.specialtyName ?? ""}${a.category ?? ""}${a.name ?? ""}`.localeCompare(
+        `${scopeB}${b.specialtyName ?? ""}${b.category ?? ""}${b.name ?? ""}`
+      );
+    });
     res.json(
       modules.map((module) => ({
         ...module,

@@ -216,6 +216,13 @@ npx vercel@latest logs https://odonto-modular-ai.vercel.app --no-follow --level 
 
 ## Modulos iniciais
 
+Os modulos sao organizados por escopo:
+
+- `COMMON`: modulos comuns a todas as areas da odontologia;
+- `SPECIALTY`: modulos especificos de uma especialidade.
+
+Na interface, a tela `Modulos` possui uma aba raiz `Comuns` e abas por especialidade. Cada modulo continua sendo ativavel/desativavel por clinica e participando da cobranca mensal.
+
 - Pacientes
 - Agenda
 - Prontuario
@@ -225,6 +232,16 @@ npx vercel@latest logs https://odonto-modular-ai.vercel.app --no-follow --level 
 - IA para imagens de exames
 - Cobranca
 - Seguranca avancada
+
+Especialidades iniciais:
+
+- Radiologia odontologica
+- Endodontia
+- Ortodontia
+- Implantodontia
+- Periodontia
+- Odontopediatria
+- Odontologia estetica
 
 Cada modulo tem `basePrice` e pode ser ativado/desativado por clinica em `ClinicModule`.
 

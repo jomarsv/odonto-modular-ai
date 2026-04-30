@@ -613,7 +613,20 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
 }
 
 function Modules({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
-  const [modules, setModules] = useState<Array<{ id: string; name: string; description: string; category: string; basePrice: string; enabled: boolean }>>([]);
+  type ModuleItem = {
+    id: string;
+    key: string;
+    name: string;
+    description: string;
+    category: string;
+    basePrice: string;
+    enabled: boolean;
+    scope?: string | null;
+    specialtyKey?: string | null;
+    specialtyName?: string | null;
+  };
+  const [modules, setModules] = useState<ModuleItem[]>([]);
+  const [activeGroup, setActiveGroup] = useState("common");
   const load = () => api.get<typeof modules>("/modules").then(setModules);
   useEffect(() => {
     load();
@@ -623,7 +636,51 @@ function Modules({ api, onSaved }: { api: ApiClient; onSaved: (message: string) 
     onSaved(enabled ? "Modulo ativado." : "Modulo desativado.");
     load();
   }
-  return <Section title="Modulos disponiveis"><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{modules.map((m) => <div key={m.id} className="panel p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold text-primary-700">{m.category}</p><h3 className="mt-1 font-semibold">{m.name}</h3></div><label className="flex items-center gap-2 normal-case tracking-normal"><input className="h-4 w-4" type="checkbox" checked={m.enabled} onChange={(e) => toggle(m.id, e.target.checked)} />Ativo</label></div><p className="mt-3 text-sm text-slate-600">{m.description}</p><p className="mt-3 text-sm font-semibold">{money(m.basePrice)}</p></div>)}</div></Section>;
+  const groups = [
+    { key: "common", label: "Comuns", count: modules.filter((module) => (module.scope ?? "COMMON") === "COMMON").length },
+    ...Array.from(
+      new Map(
+        modules
+          .filter((module) => module.scope === "SPECIALTY")
+          .map((module) => [module.specialtyKey ?? "specialty", { key: module.specialtyKey ?? "specialty", label: module.specialtyName ?? "Especialidade", count: 0 }])
+      ).values()
+    ).map((group) => ({ ...group, count: modules.filter((module) => module.specialtyKey === group.key).length }))
+  ];
+  const visibleModules = modules.filter((module) =>
+    activeGroup === "common" ? (module.scope ?? "COMMON") === "COMMON" : module.specialtyKey === activeGroup
+  );
+  return (
+    <Section title="Modulos disponiveis">
+      <div className="mb-4 flex gap-2 overflow-x-auto border-b border-slate-200 pb-2">
+        {groups.map((group) => (
+          <button
+            key={group.key}
+            className={activeGroup === group.key ? "btn-primary whitespace-nowrap" : "btn-secondary whitespace-nowrap"}
+            onClick={() => setActiveGroup(group.key)}
+          >
+            {group.label} ({group.count})
+          </button>
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {visibleModules.map((m) => (
+          <div key={m.id} className="panel p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-primary-700">{m.scope === "SPECIALTY" ? m.specialtyName : "Comum"} · {m.category}</p>
+                <h3 className="mt-1 font-semibold">{m.name}</h3>
+              </div>
+              <label className="flex items-center gap-2 normal-case tracking-normal">
+                <input className="h-4 w-4" type="checkbox" checked={m.enabled} onChange={(e) => toggle(m.id, e.target.checked)} />Ativo
+              </label>
+            </div>
+            <p className="mt-3 text-sm text-slate-600">{m.description}</p>
+            <p className="mt-3 text-sm font-semibold">{money(m.basePrice)}</p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
 }
 
 function Users({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
