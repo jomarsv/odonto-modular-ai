@@ -159,6 +159,7 @@ export default function App() {
   }, [api, session]);
 
   if (!session) return <Login onLogin={setSession} />;
+  if (session.user.role === "LEO_TECH_ADMIN") return <LeoTechConsole api={api} session={session} setSession={setSession} onSaved={setMessage} message={message} />;
   const enabledModules = new Set(modules.filter((module) => module.enabled).map((module) => module.key));
   const visibleTabs = tabs.filter(([id]) => {
     if (id === "users") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
@@ -174,7 +175,7 @@ export default function App() {
       <aside className="border-r border-slate-200 bg-white lg:w-72">
         <div className="border-b border-slate-200 p-5">
           <h1 className="text-xl font-bold text-slate-900">Odonto Modular AI</h1>
-          <p className="mt-1 text-sm text-slate-500">{session.clinic.name}</p>
+          <p className="mt-1 text-sm text-slate-500">{session.clinic?.name}</p>
         </div>
         <nav className="flex gap-2 overflow-x-auto p-3 lg:block lg:space-y-1">
           {visibleTabs.map(([id, label]) => (
@@ -282,6 +283,114 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function LeoTechConsole({
+  api,
+  session,
+  setSession,
+  onSaved,
+  message
+}: {
+  api: ApiClient;
+  session: Session;
+  setSession: (session: Session | null) => void;
+  onSaved: (message: string) => void;
+  message: string;
+}) {
+  const [summary, setSummary] = useState<Record<string, any> | null>(null);
+  const [clinics, setClinics] = useState<Array<Record<string, any>>>([]);
+  const [requests, setRequests] = useState<Array<Record<string, any>>>([]);
+  const [review, setReview] = useState({ reviewNotes: "", monthlyPrice: "99.9" });
+  const load = () => {
+    api.get<Record<string, any>>("/platform/summary").then(setSummary);
+    api.get<Array<Record<string, any>>>("/platform/clinics").then(setClinics);
+    api.get<Array<Record<string, any>>>("/platform/custom-features").then(setRequests);
+  };
+  useEffect(load, [api]);
+  async function reviewRequest(id: string, status: "APPROVED" | "REJECTED") {
+    await api.patch(`/platform/custom-features/${id}/review`, {
+      status,
+      reviewNotes: review.reviewNotes || (status === "APPROVED" ? "Aprovado para desenvolvimento e liberacao personalizada." : "Nao aprovado neste momento."),
+      monthlyPrice: status === "APPROVED" ? Number(review.monthlyPrice || 0) : 0
+    });
+    setReview({ reviewNotes: "", monthlyPrice: "99.9" });
+    onSaved(status === "APPROVED" ? "Pedido aprovado pela LEO-Tech." : "Pedido rejeitado pela LEO-Tech.");
+    load();
+  }
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <header className="border-b border-slate-200 bg-white px-5 py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Console LEO-Tech</h1>
+            <p className="text-sm text-slate-500">Gestao operacional da plataforma Odonto Modular AI</p>
+          </div>
+          <div className="flex items-center gap-3 text-sm text-slate-600">
+            <span>{session.user.name}</span>
+            <button className="btn-secondary" onClick={() => setSession(null)}>Sair</button>
+          </div>
+        </div>
+      </header>
+      <main className="space-y-5 p-4 lg:p-8">
+        {message && <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div>}
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <StatCard label="Clinicas" value={summary?.clinicsCount ?? 0} />
+          <StatCard label="Usuarios" value={summary?.usersCount ?? 0} />
+          <StatCard label="Pedidos pendentes" value={summary?.pendingCustomFeatures ?? 0} />
+          <StatCard label="Extras aprovados" value={summary?.approvedCustomFeatures ?? 0} />
+          <StatCard label="Tokens IA" value={summary?.aiTokensTotal ?? 0} />
+        </section>
+        <section className="panel overflow-hidden">
+          <div className="border-b border-slate-200 p-4">
+            <h2 className="font-semibold">Pedidos de funcionalidades</h2>
+            <p className="text-sm text-slate-500">Analise pela LEO-Tech com apoio de especialistas em odontologia.</p>
+          </div>
+          <Table headers={["Clinica", "Especialidade", "Pedido", "Solicitante", "Status", "Custo", "Decisao"]}>
+            {requests.map((request) => (
+              <tr key={String(request.id)}>
+                <td>{String(request.clinic?.name ?? request.clinicId)}</td>
+                <td>{String(request.specialtyName)}</td>
+                <td><p className="font-medium">{String(request.title)}</p><p className="text-xs text-slate-500">{String(request.description)}</p><p className="mt-1 text-xs text-slate-500">Beneficio: {String(request.expectedBenefit)}</p></td>
+                <td>{String(request.requestedBy?.name ?? request.requestedBy?.email ?? request.requestedById)}</td>
+                <td>{String(request.status)}</td>
+                <td>{money(String(request.monthlyPrice ?? 0))}</td>
+                <td>
+                  {request.status === "REQUESTED" ? (
+                    <div className="min-w-60 space-y-2">
+                      <input placeholder="Preco mensal" value={review.monthlyPrice} onChange={(e) => setReview({ ...review, monthlyPrice: e.target.value })} />
+                      <textarea rows={2} placeholder="Parecer LEO-Tech" value={review.reviewNotes} onChange={(e) => setReview({ ...review, reviewNotes: e.target.value })} />
+                      <div className="flex gap-2">
+                        <button type="button" className="btn-primary" onClick={() => reviewRequest(String(request.id), "APPROVED")}>Aprovar</button>
+                        <button type="button" className="btn-secondary" onClick={() => reviewRequest(String(request.id), "REJECTED")}>Rejeitar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-500">{String(request.reviewNotes ?? "Revisado")}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </Table>
+        </section>
+        <section className="panel overflow-hidden">
+          <div className="border-b border-slate-200 p-4">
+            <h2 className="font-semibold">Clinicas</h2>
+          </div>
+          <Table headers={["Clinica", "Usuarios", "Pedidos", "Tokens IA"]}>
+            {clinics.map((clinic) => (
+              <tr key={String(clinic.id)}>
+                <td><p className="font-medium">{String(clinic.name)}</p><p className="text-xs text-slate-500">{String(clinic.email ?? "")}</p></td>
+                <td>{String(clinic.usersCount ?? 0)}</td>
+                <td>{String(clinic.customFeatureRequestsCount ?? 0)}</td>
+                <td>{String(clinic.aiTokensTotal ?? 0)}</td>
+              </tr>
+            ))}
+          </Table>
+        </section>
+      </main>
     </div>
   );
 }

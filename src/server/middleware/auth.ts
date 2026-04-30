@@ -19,8 +19,9 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     const user = serializeDoc<{ name: string; email: string; role: UserRole; clinicId?: string }>(
       await db().collection(collectionNames.users).doc(payload.sub).get()
     );
-    if (!user?.clinicId) throw new HttpError(401, "Usuario sem clinica vinculada.");
-    req.user = { ...user, clinicId: user.clinicId };
+    if (!user) throw new HttpError(401, "Usuario nao encontrado.");
+    if (!user.clinicId && user.role !== "LEO_TECH_ADMIN") throw new HttpError(401, "Usuario sem clinica vinculada.");
+    req.user = { ...user, clinicId: user.clinicId ?? "__leo_tech_platform__" };
     return next();
   } catch (error) {
     return next(error instanceof HttpError ? error : new HttpError(401, "Token invalido."));

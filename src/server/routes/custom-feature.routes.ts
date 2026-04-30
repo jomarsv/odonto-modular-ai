@@ -27,7 +27,7 @@ export const customFeatureRouter = Router();
 customFeatureRouter.use(authenticate);
 
 function canReviewAsLeoTech(user: { role: string; email?: string }) {
-  return user.role === "ADMIN" && config.leoTechAdminEmails.includes(String(user.email ?? "").toLowerCase());
+  return user.role === "LEO_TECH_ADMIN" || (user.role === "ADMIN" && config.leoTechAdminEmails.includes(String(user.email ?? "").toLowerCase()));
 }
 
 function canViewClinicRequests(role: string) {

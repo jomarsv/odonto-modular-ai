@@ -2,8 +2,8 @@ const API_BASE = "/api";
 
 export type Session = {
   token: string;
-  user: { id: string; name: string; email: string; role: string; clinicId: string };
-  clinic: { id: string; name: string };
+  user: { id: string; name: string; email: string; role: string; clinicId?: string | null };
+  clinic: { id: string; name: string } | null;
 };
 
 export class ApiClient {

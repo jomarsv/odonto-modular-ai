@@ -249,7 +249,36 @@ Cada modulo de especialidade possui um `Balcao LEO-Tech`, usado para solicitar e
 
 Essa estrutura permite vender diferenciais personalizados por usuario, sem obrigar toda a clinica a contratar a mesma funcionalidade.
 
-A rota de revisao fica restrita a usuarios `ADMIN` com e-mail listado em `LEO_TECH_ADMIN_EMAILS`, evitando que gestores da propria clinica aprovem seus pedidos.
+A rota de revisao fica restrita a usuarios `LEO_TECH_ADMIN`, evitando que gestores da propria clinica aprovem seus pedidos.
+
+## Console LEO-Tech
+
+O app possui um console operacional separado para a empresa mantenedora da plataforma. Usuarios com role `LEO_TECH_ADMIN` entram no `Console LEO-Tech` em vez do menu da clinica.
+
+Esse console permite:
+
+- ver indicadores gerais da plataforma;
+- listar clinicas;
+- monitorar pedidos de funcionalidades personalizadas;
+- aprovar ou rejeitar pedidos;
+- definir o custo mensal adicional do extra aprovado;
+- registrar o evento de cobranca da funcionalidade personalizada.
+
+Usuario criado pelo seed:
+
+```text
+E-mail: admin@leo-tech.com.br
+Senha: demo1234
+Role: LEO_TECH_ADMIN
+```
+
+Em producao, configure:
+
+```text
+LEO_TECH_ADMIN_EMAILS=admin@leo-tech.com.br
+```
+
+Para criar outro operador LEO-Tech, crie um documento em `users` com `role: "LEO_TECH_ADMIN"`, `clinicId: null`, `email`, `name` e `passwordHash`.
 
 - Pacientes
 - Agenda

@@ -39,12 +39,12 @@ authRouter.post(
     if (!user || !(await bcrypt.compare(data.password, user.passwordHash))) {
       throw new HttpError(401, "Credenciais invalidas.");
     }
-    if (!user.clinicId) throw new HttpError(403, "Usuario sem clinica.");
-    const clinic = await getById(collectionNames.clinics, user.clinicId);
+    if (!user.clinicId && user.role !== "LEO_TECH_ADMIN") throw new HttpError(403, "Usuario sem clinica.");
+    const clinic = user.clinicId ? await getById(collectionNames.clinics, user.clinicId) : null;
     const token = jwt.sign({ sub: user.id }, config.jwtSecret, { expiresIn: "8h" });
     res.json({
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, clinicId: user.clinicId },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, clinicId: user.clinicId ?? null },
       clinic
     });
   })
@@ -99,7 +99,7 @@ authRouter.get(
   authenticate,
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
-    const profile = serializeDoc<{ name: string; email: string; role: UserRole; clinicId: string }>(
+    const profile = serializeDoc<{ name: string; email: string; role: UserRole; clinicId?: string }>(
       await db().collection(collectionNames.users).doc(user.id).get()
     );
     const clinic = profile?.clinicId ? await getById(collectionNames.clinics, profile.clinicId) : null;
