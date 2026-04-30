@@ -262,6 +262,22 @@ A Implantodontia tambem e organizada em submodulos comerciais e funcionais. Cada
 
 Campos especificos de cada submodulo de Implantodontia entram no registro e no contexto de IA: submodulo, escopo, regiao/elementos, avaliacao ossea, planejamento protetico, planejamento cirurgico, achados de imagem/CBCT, fatores de risco e manutencao.
 
+A Odontologia Estetica/Dentistica Estetica tambem e organizada em submodulos comerciais e funcionais. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
+
+- Planejamento estetico: R$ 109,90/mes;
+- Dentistica estetica restauradora: R$ 99,90/mes;
+- Clareamento dental: R$ 69,90/mes;
+- Lentes de contato dentais e facetas: R$ 139,90/mes;
+- Reanatomizacao dental: R$ 89,90/mes;
+- Planejamento estetico digital / DSD: R$ 149,90/mes;
+- Estetica gengival: R$ 119,90/mes;
+- Odontologia biomimetica: R$ 129,90/mes;
+- Estetica com proteses dentarias: R$ 139,90/mes;
+- Materiais esteticos avancados: R$ 109,90/mes;
+- Odontologia estetica digital / IA: R$ 179,90/mes.
+
+Campos especificos de cada submodulo de Odontologia Estetica entram no registro e no contexto de IA: submodulo, escopo, queixa/objetivo estetico, meta de cor/clareamento, forma/proporcao/reanatomizacao, materiais e tecnica, estetica gengival, planejamento digital/DSD/IA e observacoes.
+
 O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
 
 ### Balcao LEO-Tech de funcionalidades personalizadas

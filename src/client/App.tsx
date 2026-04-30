@@ -256,6 +256,75 @@ const implantologySubmodules = [
   }
 ];
 
+const aestheticSubmodules = [
+  {
+    moduleKey: "aesthetic-dentistry",
+    label: "Planejamento estetico",
+    description: "Base para planejamento estetico, fotografias, mockups, objetivos do sorriso e acompanhamento.",
+    monthlyPrice: 109.9
+  },
+  {
+    moduleKey: "aesthetic-restorative",
+    label: "Dentistica estetica restauradora",
+    description: "Resinas compostas, reconstrucoes, fechamento de diastemas, naturalidade, funcao e forma dental.",
+    monthlyPrice: 99.9
+  },
+  {
+    moduleKey: "aesthetic-whitening",
+    label: "Clareamento dental",
+    description: "Clareamento de consultorio, caseiro supervisionado e interno em dentes tratados endodonticamente.",
+    monthlyPrice: 69.9
+  },
+  {
+    moduleKey: "aesthetic-veneers",
+    label: "Lentes de contato dentais e facetas",
+    description: "Facetas de resina, facetas de porcelana, lentes ultrafinas, forma, cor e alinhamento visual.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "aesthetic-reanatomization",
+    label: "Reanatomizacao dental",
+    description: "Modelagem estetica, alteracao de formato dental e harmonizacao do sorriso com minimo desgaste.",
+    monthlyPrice: 89.9
+  },
+  {
+    moduleKey: "aesthetic-dsd",
+    label: "Planejamento estetico digital / DSD",
+    description: "Digital Smile Design, simulacao do sorriso, planejamento com fotos, softwares e suporte de IA.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "aesthetic-gingival",
+    label: "Estetica gengival",
+    description: "Gengivoplastia, gengivectomia, correcao de sorriso gengival e harmonia dos tecidos moles.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "aesthetic-biomimetic",
+    label: "Odontologia biomimetica",
+    description: "Restauracoes que imitam a estrutura natural e preservam ao maximo o tecido dental.",
+    monthlyPrice: 129.9
+  },
+  {
+    moduleKey: "aesthetic-prosthetic",
+    label: "Estetica com proteses dentarias",
+    description: "Coroas esteticas, proteses fixas e reabilitacao oral estetica integrada.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "aesthetic-materials",
+    label: "Materiais esteticos avancados",
+    description: "Ceramicas odontologicas, resinas de alta performance e sistemas CAD/CAM.",
+    monthlyPrice: 109.9
+  },
+  {
+    moduleKey: "aesthetic-digital-ai",
+    label: "Odontologia estetica digital / IA",
+    description: "Simulacao estetica com IA, previsao de resultado, analise de sorriso e sugestao de tratamento.",
+    monthlyPrice: 179.9
+  }
+];
+
 function money(value: number | string) {
   return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -926,6 +995,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     surgicalPlan: "",
     implantImaging: "",
     implantRiskFactors: "",
+    smileComplaint: "",
+    shadeGoal: "",
+    toothShapePlan: "",
+    aestheticMaterials: "",
+    gingivalAesthetics: "",
+    digitalSmilePlan: "",
     skeletalClass: "",
     malocclusion: "",
     orthodonticObjectives: "",
@@ -938,6 +1013,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   const isEndodonticModule = Boolean(selectedEndodonticSubmodule);
   const selectedImplantologySubmodule = implantologySubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isImplantologyModule = Boolean(selectedImplantologySubmodule);
+  const selectedAestheticSubmodule = aestheticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
+  const isAestheticModule = Boolean(selectedAestheticSubmodule);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const loadEntries = () => {
     if (selectedModuleId) api.get<Array<Record<string, any>>>(`/module-workspace/${selectedModuleId}`).then(setEntries);
@@ -978,6 +1055,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       surgicalPlan: "",
       implantImaging: "",
       implantRiskFactors: "",
+      smileComplaint: "",
+      shadeGoal: "",
+      toothShapePlan: "",
+      aestheticMaterials: "",
+      gingivalAesthetics: "",
+      digitalSmilePlan: "",
       skeletalClass: "",
       malocclusion: "",
       orthodonticObjectives: "",
@@ -1022,6 +1105,19 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
         `Notas gerais: ${form.notes || "Nao informado"}`
       ].join("\n");
     }
+    if (isAestheticModule) {
+      return [
+        `Submodulo de odontologia estetica: ${selectedAestheticSubmodule?.label || "Nao informado"}`,
+        `Escopo: ${selectedAestheticSubmodule?.description || "Nao informado"}`,
+        `Queixa/objetivo estetico: ${form.smileComplaint || "Nao informado"}`,
+        `Meta de cor/clareamento: ${form.shadeGoal || "Nao informado"}`,
+        `Forma, proporcao e reanatomizacao: ${form.toothShapePlan || "Nao informado"}`,
+        `Materiais e tecnica: ${form.aestheticMaterials || "Nao informado"}`,
+        `Estetica gengival: ${form.gingivalAesthetics || "Nao informado"}`,
+        `Planejamento digital/DSD/IA: ${form.digitalSmilePlan || "Nao informado"}`,
+        `Notas gerais: ${form.notes || "Nao informado"}`
+      ].join("\n");
+    }
     return form.notes;
   }
   function buildSpecialtyAIInput() {
@@ -1053,6 +1149,15 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       isImplantologyModule ? `Planejamento cirurgico: ${form.surgicalPlan || "Nao informado"}` : "",
       isImplantologyModule ? `Achados de imagem/CBCT: ${form.implantImaging || "Nao informado"}` : "",
       isImplantologyModule ? `Fatores de risco e manutencao: ${form.implantRiskFactors || "Nao informado"}` : "",
+      isAestheticModule ? "Nota tecnica: Odontologia Estetica/Dentistica Estetica usa submodulos funcionais e comerciais para organizar fluxo, cobranca e analise." : "",
+      isAestheticModule ? `Submodulo de odontologia estetica: ${selectedAestheticSubmodule?.label || "Nao informado"}` : "",
+      isAestheticModule ? `Escopo do submodulo: ${selectedAestheticSubmodule?.description || "Nao informado"}` : "",
+      isAestheticModule ? `Queixa/objetivo estetico: ${form.smileComplaint || "Nao informado"}` : "",
+      isAestheticModule ? `Meta de cor/clareamento: ${form.shadeGoal || "Nao informado"}` : "",
+      isAestheticModule ? `Forma, proporcao e reanatomizacao: ${form.toothShapePlan || "Nao informado"}` : "",
+      isAestheticModule ? `Materiais e tecnica: ${form.aestheticMaterials || "Nao informado"}` : "",
+      isAestheticModule ? `Estetica gengival: ${form.gingivalAesthetics || "Nao informado"}` : "",
+      isAestheticModule ? `Planejamento digital/DSD/IA: ${form.digitalSmilePlan || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}` : "",
@@ -1147,6 +1252,18 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
                 <Field label="Planejamento cirurgico"><textarea rows={3} value={form.surgicalPlan} onChange={(e) => setForm({ ...form, surgicalPlan: e.target.value })} placeholder="Tecnica, implante imediato, guia cirurgico, sinus lift, split crest..." /></Field>
                 <Field label="Achados de imagem / CBCT"><textarea rows={3} value={form.implantImaging} onChange={(e) => setForm({ ...form, implantImaging: e.target.value })} placeholder="CBCT, canal mandibular, seio maxilar, cortical, defeitos osseos..." /></Field>
                 <Field label="Fatores de risco e manutencao"><textarea rows={3} value={form.implantRiskFactors} onChange={(e) => setForm({ ...form, implantRiskFactors: e.target.value })} placeholder="Tabagismo, diabetes, peri-implantite, higiene, manutencao..." /></Field>
+              </>
+            )}
+            {isAestheticModule && (
+              <>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Odontologia Estetica/Dentistica Estetica e organizada aqui em submodulos comerciais e funcionais para fluxo, cobranca e analise especifica.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedAestheticSubmodule?.description} Custo do submodulo: {money(selectedAestheticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <Field label="Queixa / objetivo estetico"><textarea rows={3} value={form.smileComplaint} onChange={(e) => setForm({ ...form, smileComplaint: e.target.value })} placeholder="Cor, forma, diastema, fratura, proporcao, harmonia do sorriso..." /></Field>
+                <Field label="Meta de cor / clareamento"><input value={form.shadeGoal} onChange={(e) => setForm({ ...form, shadeGoal: e.target.value })} placeholder="Ex.: A1, BL2, clareamento interno, caseiro..." /></Field>
+                <Field label="Forma, proporcao e reanatomizacao"><textarea rows={3} value={form.toothShapePlan} onChange={(e) => setForm({ ...form, toothShapePlan: e.target.value })} placeholder="Formato dental, largura/altura, borda incisal, fechamento de diastemas..." /></Field>
+                <Field label="Materiais e tecnica"><textarea rows={3} value={form.aestheticMaterials} onChange={(e) => setForm({ ...form, aestheticMaterials: e.target.value })} placeholder="Resina composta, ceramica, faceta, lente, CAD/CAM..." /></Field>
+                <Field label="Estetica gengival"><textarea rows={3} value={form.gingivalAesthetics} onChange={(e) => setForm({ ...form, gingivalAesthetics: e.target.value })} placeholder="Sorriso gengival, zenite, gengivoplastia, contorno gengival..." /></Field>
+                <Field label="Planejamento digital / DSD / IA"><textarea rows={3} value={form.digitalSmilePlan} onChange={(e) => setForm({ ...form, digitalSmilePlan: e.target.value })} placeholder="Fotos, DSD, mockup, simulacao, previsao de resultado por IA..." /></Field>
               </>
             )}
             <Field label="Titulo"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
