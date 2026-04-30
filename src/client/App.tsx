@@ -82,6 +82,25 @@ type ModuleItem = {
   specialtyName?: string | null;
 };
 
+type CustomFeatureRequest = {
+  id: string;
+  moduleId: string;
+  moduleName?: string | null;
+  specialtyName: string;
+  title: string;
+  description: string;
+  expectedBenefit: string;
+  suggestedMonthlyBudget?: number | null;
+  status: string;
+  monthlyPrice?: number | null;
+  enabled?: boolean;
+  reviewNotes?: string | null;
+  requestedById: string;
+  approvedForUserId?: string | null;
+  requestedBy?: { name?: string; email?: string } | null;
+  createdAt: string;
+};
+
 const tabs = [
   ["dashboard", "Dashboard"],
   ["patients", "Pacientes"],
@@ -186,7 +205,7 @@ export default function App() {
         {activeTab === "records" && <Records api={api} onSaved={setMessage} />}
         {activeTab === "documents" && <Documents api={api} onSaved={setMessage} />}
         {activeTab === "examImages" && <ExamImages api={api} onSaved={setMessage} />}
-        {activeTab === "specialties" && <Specialties api={api} modules={modules} onSaved={setMessage} />}
+        {activeTab === "specialties" && <Specialties api={api} modules={modules} session={session} onSaved={setMessage} />}
         {activeTab === "users" && <Users api={api} onSaved={setMessage} />}
         {activeTab === "clinic" && <ClinicSettings api={api} session={session} setSession={setSession} onSaved={setMessage} />}
         {activeTab === "profile" && <Profile api={api} session={session} setSession={setSession} onSaved={setMessage} />}
@@ -647,11 +666,12 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
   );
 }
 
-function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: ModuleItem[]; onSaved: (message: string) => void }) {
+function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modules: ModuleItem[]; session: Session; onSaved: (message: string) => void }) {
   const activeSpecialtyModules = modules.filter((module) => module.enabled && module.scope === "SPECIALTY");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState(activeSpecialtyModules[0]?.id ?? "");
   const [entries, setEntries] = useState<Array<Record<string, any>>>([]);
+  const [featureRequests, setFeatureRequests] = useState<CustomFeatureRequest[]>([]);
   const [form, setForm] = useState({
     patientId: "",
     title: "",
@@ -665,13 +685,20 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
     orthodonticObjectives: "",
     aiQuestion: ""
   });
+  const [featureForm, setFeatureForm] = useState({ title: "", description: "", expectedBenefit: "", suggestedMonthlyBudget: "" });
+  const [reviewForm, setReviewForm] = useState({ reviewNotes: "", monthlyPrice: "99.9" });
   const [aiResult, setAiResult] = useState("");
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
+  const canReviewCustomFeatures = ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const loadEntries = () => {
     if (selectedModuleId) api.get<Array<Record<string, any>>>(`/module-workspace/${selectedModuleId}`).then(setEntries);
   };
+  const loadFeatureRequests = () => {
+    if (selectedModuleId) api.get<CustomFeatureRequest[]>(`/custom-features?moduleId=${selectedModuleId}`).then(setFeatureRequests);
+  };
   useEffect(loadEntries, [api, selectedModuleId]);
+  useEffect(loadFeatureRequests, [api, selectedModuleId]);
   useEffect(() => {
     if (!selectedModuleId && activeSpecialtyModules[0]) setSelectedModuleId(activeSpecialtyModules[0].id);
   }, [activeSpecialtyModules.length, selectedModuleId]);
@@ -753,6 +780,31 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
     setAiResult(response.text);
     onSaved(featureKey === "specialty-analysis" ? "Analise da especialidade gerada." : "Pergunta respondida pela IA.");
   }
+  async function requestCustomFeature(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedModule) return;
+    await api.post("/custom-features", {
+      moduleId: selectedModule.id,
+      specialtyKey: selectedModule.specialtyKey,
+      specialtyName: selectedModule.specialtyName,
+      title: featureForm.title,
+      description: featureForm.description,
+      expectedBenefit: featureForm.expectedBenefit,
+      suggestedMonthlyBudget: featureForm.suggestedMonthlyBudget ? Number(featureForm.suggestedMonthlyBudget) : undefined
+    });
+    setFeatureForm({ title: "", description: "", expectedBenefit: "", suggestedMonthlyBudget: "" });
+    onSaved("Solicitacao enviada para analise.");
+    loadFeatureRequests();
+  }
+  async function reviewCustomFeature(request: CustomFeatureRequest, status: "APPROVED" | "REJECTED") {
+    await api.patch(`/custom-features/${request.id}/review`, {
+      status,
+      reviewNotes: reviewForm.reviewNotes || (status === "APPROVED" ? "Aprovado para uso personalizado." : "Nao aprovado neste momento."),
+      monthlyPrice: status === "APPROVED" ? Number(reviewForm.monthlyPrice || 0) : 0
+    });
+    onSaved(status === "APPROVED" ? "Funcionalidade personalizada aprovada." : "Solicitacao rejeitada.");
+    loadFeatureRequests();
+  }
   if (!activeSpecialtyModules.length) return <Section title="Especialidades"><p>Nenhum modulo de especialidade ativo.</p></Section>;
   return (
     <Section title="Especialidades">
@@ -799,6 +851,45 @@ function Specialties({ api, modules, onSaved }: { api: ApiClient; modules: Modul
             <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Conteudo gerado por IA para apoio profissional. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
           </form>
           <div className="space-y-4">
+            <div className="panel p-4">
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-primary-700">Balcao de funcionalidades</p>
+                <h3 className="font-semibold">Extras personalizados</h3>
+                <p className="mt-1 text-sm text-slate-500">Solicite uma funcionalidade especifica para esta especialidade. Se aprovada, ela fica liberada somente para o usuario solicitante e entra como custo mensal adicional.</p>
+              </div>
+              <form onSubmit={requestCustomFeature} className="grid gap-3 lg:grid-cols-2">
+                <Field label="Funcionalidade desejada"><input required value={featureForm.title} onChange={(e) => setFeatureForm({ ...featureForm, title: e.target.value })} placeholder="Ex.: checklist de caso complexo" /></Field>
+                <Field label="Orcamento mensal sugerido"><input type="number" min="0" step="0.01" value={featureForm.suggestedMonthlyBudget} onChange={(e) => setFeatureForm({ ...featureForm, suggestedMonthlyBudget: e.target.value })} /></Field>
+                <Field label="Descricao"><textarea required rows={3} value={featureForm.description} onChange={(e) => setFeatureForm({ ...featureForm, description: e.target.value })} /></Field>
+                <Field label="Beneficio esperado"><textarea required rows={3} value={featureForm.expectedBenefit} onChange={(e) => setFeatureForm({ ...featureForm, expectedBenefit: e.target.value })} /></Field>
+                <div className="lg:col-span-2"><button className="btn-primary">Solicitar analise</button></div>
+              </form>
+            </div>
+            <div className="panel overflow-hidden">
+              <Table headers={["Funcionalidade", "Solicitante", "Status", "Custo", "Acoes"]}>
+                {featureRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td><p className="font-medium">{request.title}</p><p className="text-xs text-slate-500">{request.description}</p>{request.reviewNotes && <p className="mt-1 text-xs text-slate-500">Analise: {request.reviewNotes}</p>}</td>
+                    <td>{request.requestedBy?.name ?? request.requestedBy?.email ?? request.requestedById}</td>
+                    <td>{request.status === "APPROVED" && request.approvedForUserId === session.user.id ? "LIBERADA PARA VOCE" : request.status}</td>
+                    <td>{money(String(request.monthlyPrice ?? 0))}</td>
+                    <td>
+                      {canReviewCustomFeatures && request.status === "REQUESTED" ? (
+                        <div className="space-y-2">
+                          <input placeholder="Preco mensal" value={reviewForm.monthlyPrice} onChange={(e) => setReviewForm({ ...reviewForm, monthlyPrice: e.target.value })} />
+                          <textarea rows={2} placeholder="Parecer" value={reviewForm.reviewNotes} onChange={(e) => setReviewForm({ ...reviewForm, reviewNotes: e.target.value })} />
+                          <div className="flex gap-2"><button type="button" className="btn-primary" onClick={() => reviewCustomFeature(request, "APPROVED")}>Aprovar</button><button type="button" className="btn-secondary" onClick={() => reviewCustomFeature(request, "REJECTED")}>Rejeitar</button></div>
+                        </div>
+                      ) : request.status === "APPROVED" && request.approvedForUserId === session.user.id ? (
+                        <span className="text-sm text-emerald-700">Disponivel no seu workspace</span>
+                      ) : (
+                        <span className="text-sm text-slate-500">Sem acao</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
             {aiResult && <pre className="panel whitespace-pre-wrap p-4 text-sm">{aiResult}</pre>}
             <div className="panel overflow-hidden">
               <Table headers={["Data", "Paciente", "Titulo", "Status"]}>
@@ -1146,6 +1237,7 @@ function Billing({ api }: { api: ApiClient }) {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Price label="Plano base" value={estimate.basePlanPrice} />
         <Price label="Mensalidade dos modulos" value={estimate.activeModulesPrice} />
+        <Price label="Extras personalizados" value={estimate.customFeaturesPrice ?? 0} />
         <Price label="Storage do ciclo" value={estimate.storagePrice} />
         <Price label="IA por tokens" value={estimate.aiOtherUsagePrice ?? estimate.aiUsagePrice} />
         <Price label={`Perguntas IA (${estimate.aiQuestionsThisMonth ?? 0})`} value={estimate.aiQuestionPrice ?? 0} />

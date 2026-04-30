@@ -20,6 +20,7 @@ export const collectionNames = {
   paymentCheckoutSessions: "paymentCheckoutSessions",
   paymentWebhookEvents: "paymentWebhookEvents",
   moduleWorkspaceEntries: "moduleWorkspaceEntries",
+  customFeatureRequests: "customFeatureRequests",
   actionLogs: "actionLogs"
 } as const;
 

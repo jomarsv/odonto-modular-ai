@@ -91,6 +91,29 @@ export async function createModuleBillingEvent(input: {
   });
 }
 
+export async function createCustomFeatureBillingEvent(input: {
+  clinicId: string;
+  requestId: string;
+  userId: string;
+  moduleId: string;
+  title: string;
+  monthlyPrice: number;
+}) {
+  await addDoc(collectionNames.billingEvents, {
+    clinicId: input.clinicId,
+    eventType: "CUSTOM_FEATURE_APPROVED",
+    description: `Funcionalidade personalizada aprovada: ${input.title}. Cobranca mensal adicional aplicada ao usuario solicitante.`,
+    amount: input.monthlyPrice,
+    metadata: {
+      requestId: input.requestId,
+      userId: input.userId,
+      moduleId: input.moduleId,
+      billingPolicy: "MONTHLY_CUSTOM_FEATURE_PER_USER"
+    },
+    createdAt: now()
+  });
+}
+
 export async function getMonthlyEstimate(clinicId: string) {
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -98,11 +121,12 @@ export async function getMonthlyEstimate(clinicId: string) {
   const nextMonthStart = new Date(monthStart);
   nextMonthStart.setMonth(nextMonthStart.getMonth() + 1);
 
-  const [clinicModulesSnapshot, modulesSnapshot, aiUsageSnapshot, documentsSnapshot] = await Promise.all([
+  const [clinicModulesSnapshot, modulesSnapshot, aiUsageSnapshot, documentsSnapshot, customFeaturesSnapshot] = await Promise.all([
     db().collection(collectionNames.clinicModules).where("clinicId", "==", clinicId).where("enabled", "==", true).get(),
     db().collection(collectionNames.modules).where("isActive", "==", true).get(),
     db().collection(collectionNames.aiUsageLogs).where("clinicId", "==", clinicId).get(),
-    db().collection(collectionNames.documentFiles).where("clinicId", "==", clinicId).get()
+    db().collection(collectionNames.documentFiles).where("clinicId", "==", clinicId).get(),
+    db().collection(collectionNames.customFeatureRequests).where("clinicId", "==", clinicId).where("status", "==", "APPROVED").get()
   ]);
   const modules = serializeDocs<Record<string, unknown>>(modulesSnapshot);
   const clinicModules = serializeDocs<Record<string, unknown>>(clinicModulesSnapshot)
@@ -110,9 +134,11 @@ export async function getMonthlyEstimate(clinicId: string) {
     .filter((item) => item.module);
   const aiUsageRows = serializeDocs<Record<string, unknown>>(aiUsageSnapshot).filter((item) => new Date(String(item.createdAt)) >= monthStart);
   const documentRows = serializeDocs<Record<string, unknown>>(documentsSnapshot);
+  const customFeatureRows = serializeDocs<Record<string, unknown>>(customFeaturesSnapshot).filter((item) => item.enabled !== false);
 
   const basePlanPrice = 199;
   const activeModulesPrice = clinicModules.reduce((sum, item) => sum + Number(item.module?.basePrice ?? 0), 0);
+  const customFeaturesPrice = customFeatureRows.reduce((sum, item) => sum + Number(item.monthlyPrice ?? 0), 0);
   const aiUsagePrice = aiUsageRows.reduce((sum, item) => sum + Number(item.estimatedCost ?? 0), 0);
   const aiQuestionRows = aiUsageRows.filter((item) => isAIQuestionFeature(String(item.featureKey ?? "")));
   const aiQuestionPrice = aiQuestionRows.reduce((sum, item) => sum + Number(item.estimatedCost ?? 0), 0);
@@ -120,7 +146,7 @@ export async function getMonthlyEstimate(clinicId: string) {
   const storageMb = documentRows.reduce((sum, item) => sum + Number(item.fileSize ?? 0), 0) / 1024 / 1024;
   const storagePrice = Number((storageMb * 0.05).toFixed(2));
   const securityPrice = clinicModules.some((item) => item.module?.key === "security-advanced") ? 49.9 : 0;
-  const monthlyPrice = Number((basePlanPrice + activeModulesPrice + storagePrice + aiUsagePrice + securityPrice).toFixed(2));
+  const monthlyPrice = Number((basePlanPrice + activeModulesPrice + customFeaturesPrice + storagePrice + aiUsagePrice + securityPrice).toFixed(2));
 
   return {
     billingPolicy: "MONTHLY_CYCLE_NO_PRORATA",
@@ -128,6 +154,8 @@ export async function getMonthlyEstimate(clinicId: string) {
     cycleEnd: nextMonthStart.toISOString(),
     basePlanPrice,
     activeModulesPrice,
+    customFeaturesPrice,
+    activeCustomFeatures: customFeatureRows,
     storagePrice,
     aiUsagePrice,
     aiQuestionPrice,

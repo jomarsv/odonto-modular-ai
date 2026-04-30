@@ -44,6 +44,7 @@ billingRouter.get(
     const items = [
       { type: "BASE_PLAN", description: "Plano base mensal", amount: estimate.basePlanPrice },
       { type: "MODULES", description: "Mensalidade dos modulos ativos", amount: estimate.activeModulesPrice },
+      { type: "CUSTOM_FEATURES", description: "Funcionalidades personalizadas aprovadas por usuario", amount: estimate.customFeaturesPrice },
       { type: "STORAGE", description: "Consumo estimado de armazenamento", amount: estimate.storagePrice },
       { type: "AI_USAGE", description: "Consumo de IA por tokens no ciclo", amount: estimate.aiOtherUsagePrice },
       { type: "AI_QUESTIONS", description: `Perguntas para IA no ciclo (${estimate.aiQuestionsThisMonth})`, amount: estimate.aiQuestionPrice },

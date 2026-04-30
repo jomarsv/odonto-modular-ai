@@ -236,6 +236,18 @@ O modulo `Planejamento endodontico` possui campos especificos para dente/regiao,
 
 O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
 
+### Balcao de funcionalidades personalizadas
+
+Cada modulo de especialidade possui um `Balcao de funcionalidades`, usado para solicitar extras especificos da especialidade. O fluxo do MVP e:
+
+- o usuario solicita uma funcionalidade extra dentro da especialidade ativa;
+- gestores da clinica (`ADMIN` ou `CLINIC_MANAGER`) analisam, aprovam ou rejeitam;
+- quando aprovado, o extra fica liberado somente para o usuario solicitante;
+- o extra aprovado entra na fatura como custo mensal adicional em `Extras personalizados`;
+- a aprovacao cria um `BillingEvent` do tipo `CUSTOM_FEATURE_APPROVED`.
+
+Essa estrutura permite vender diferenciais personalizados por usuario, sem obrigar toda a clinica a contratar a mesma funcionalidade.
+
 - Pacientes
 - Agenda
 - Prontuario
