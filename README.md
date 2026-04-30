@@ -232,18 +232,19 @@ Todos os modulos de especialidade ativos possuem acoes de IA:
 
 Perguntas para IA sao cobradas por pergunta realizada, independentemente da especialidade perguntada estar ativa como modulo. Isso permite que uma clinica assine uma especialidade especifica, mas ainda faca perguntas pontuais sobre outras areas usando a tela `Uso de IA`. No MVP, `specialty-question` gera um evento `AI_QUESTION` e aplica uma cobranca minima por pergunta, alem do registro de tokens em `AIUsageLog`.
 
-O modulo `Planejamento endodontico` organiza a Endodontia por subareas clinicas e cientificas, sem tratar essas subareas como especialidades formais reconhecidas pelo CFO. A ficha inclui:
+A Endodontia e organizada em submodulos comerciais e funcionais, sem tratar essas frentes como especialidades formais reconhecidas pelo CFO. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
 
-- Endodontia clinica convencional;
-- Endodontia microscopica;
-- Endodontia cirurgica / parendodontica;
-- Endodontia regenerativa;
-- Endodontia biologica / vital;
-- Diagnostico endodontico avancado;
-- Microbiologia endodontica;
-- Endodontia tecnologica.
+- Planejamento endodontico: R$ 89,90/mes;
+- Endodontia clinica convencional: R$ 79,90/mes;
+- Endodontia microscopica: R$ 129,90/mes;
+- Endodontia cirurgica / parendodontica: R$ 149,90/mes;
+- Endodontia regenerativa: R$ 159,90/mes;
+- Endodontia biologica / vital: R$ 99,90/mes;
+- Diagnostico endodontico avancado: R$ 119,90/mes;
+- Microbiologia endodontica: R$ 109,90/mes;
+- Endodontia tecnologica: R$ 119,90/mes.
 
-Campos especificos de Endodontia entram no registro e no contexto de IA: subarea, dente/regiao, hipotese diagnostica, status pulpar, status periapical, achados de imagem, objetivo endodontico, canais, testes e observacoes.
+Campos especificos de cada submodulo endodontico entram no registro e no contexto de IA: submodulo, escopo, dente/regiao, hipotese diagnostica, status pulpar, status periapical, achados de imagem, objetivo endodontico, canais, testes e observacoes.
 
 O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
 

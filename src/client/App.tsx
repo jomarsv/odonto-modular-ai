@@ -130,46 +130,60 @@ const tabModules: Partial<Record<(typeof tabs)[number][0], string[]>> = {
   billing: ["billing"]
 };
 
-const endodonticSubareas = [
+const endodonticSubmodules = [
   {
-    key: "clinical-conventional",
+    moduleKey: "endodontics-planning",
+    label: "Planejamento endodontico",
+    description: "Ficha base para diagnostico, plano endodontico, canais, testes, achados e acompanhamento.",
+    monthlyPrice: 89.9
+  },
+  {
+    moduleKey: "endodontics-conventional",
     label: "Endodontia clinica convencional",
-    description: "Tratamento de canal, retratamento, controle de infeccoes pulpares e diagnostico de dor endodontica."
+    description: "Tratamento de canal, retratamento, controle de infeccoes pulpares e diagnostico de dor endodontica.",
+    monthlyPrice: 79.9
   },
   {
-    key: "microscopic",
+    moduleKey: "endodontics-microscopic",
     label: "Endodontia microscopica",
-    description: "Uso de microscopio operatorio para canais calcificados, instrumentos fraturados e anatomias complexas."
+    description: "Uso de microscopio operatorio para canais calcificados, instrumentos fraturados e anatomias complexas.",
+    monthlyPrice: 129.9
   },
   {
-    key: "surgical",
+    moduleKey: "endodontics-surgical",
     label: "Endodontia cirurgica / parendodontica",
-    description: "Apicectomia, curetagem periapical, retrobturacao e manejo de falhas do tratamento convencional."
+    description: "Apicectomia, curetagem periapical, retrobturacao e manejo de falhas do tratamento convencional.",
+    monthlyPrice: 149.9
   },
   {
-    key: "regenerative",
+    moduleKey: "endodontics-regenerative",
     label: "Endodontia regenerativa",
-    description: "Regeneracao tecidual e manejo de dentes imaturos com necrose pulpar e raiz incompleta."
+    description: "Regeneracao tecidual e manejo de dentes imaturos com necrose pulpar e raiz incompleta.",
+    monthlyPrice: 159.9
   },
   {
-    key: "biological-vital",
+    moduleKey: "endodontics-vital",
     label: "Endodontia biologica / vital",
-    description: "Preservacao da polpa viva, capeamentos pulpares, pulpotomia e tratamentos conservadores."
+    description: "Preservacao da polpa viva, capeamentos pulpares, pulpotomia e tratamentos conservadores.",
+    monthlyPrice: 99.9
   },
   {
-    key: "advanced-diagnosis",
+    moduleKey: "endodontics-advanced-diagnosis",
     label: "Diagnostico endodontico avancado",
-    description: "Testes de vitalidade, interpretacao de dor e correlacao com radiografia ou CBCT."
+    description: "Testes de vitalidade, interpretacao de dor e correlacao com radiografia ou CBCT.",
+    monthlyPrice: 119.9
   },
   {
-    key: "microbiology",
+    moduleKey: "endodontics-microbiology",
     label: "Microbiologia endodontica",
-    description: "Biofilmes, bacterias dos canais radiculares, infeccao persistente e resistencia microbiana."
+    description: "Biofilmes, bacterias dos canais radiculares, infeccao persistente e resistencia microbiana.",
+    monthlyPrice: 109.9
   },
   {
-    key: "technology",
+    moduleKey: "endodontics-technology",
     label: "Endodontia tecnologica",
-    description: "Instrumentacao rotatoria/reciprocante, localizadores apicais e sistemas avancados de irrigacao."
+    description: "Instrumentacao rotatoria/reciprocante, localizadores apicais e sistemas avancados de irrigacao.",
+    monthlyPrice: 119.9
   }
 ];
 
@@ -845,6 +859,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   const [featureForm, setFeatureForm] = useState({ title: "", description: "", expectedBenefit: "", suggestedMonthlyBudget: "" });
   const [aiResult, setAiResult] = useState("");
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
+  const selectedEndodonticSubmodule = endodonticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
+  const isEndodonticModule = Boolean(selectedEndodonticSubmodule);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const loadEntries = () => {
     if (selectedModuleId) api.get<Array<Record<string, any>>>(`/module-workspace/${selectedModuleId}`).then(setEntries);
@@ -888,11 +904,10 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     loadEntries();
   }
   function buildSpecialtyNotes() {
-    if (selectedModule?.id === "endodontics-planning") {
-      const subarea = endodonticSubareas.find((item) => item.key === form.endodonticSubarea);
+    if (isEndodonticModule) {
       return [
-        `Subarea clinica/cientifica: ${subarea?.label || "Nao informado"}`,
-        `Escopo: ${subarea?.description || "Nao informado"}`,
+        `Submodulo endodontico: ${selectedEndodonticSubmodule?.label || "Nao informado"}`,
+        `Escopo: ${selectedEndodonticSubmodule?.description || "Nao informado"}`,
         `Dente/regiao: ${form.tooth || "Nao informado"}`,
         `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}`,
         `Status pulpar: ${form.pulpStatus || "Nao informado"}`,
@@ -919,21 +934,20 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       .slice(0, 5)
       .map((entry) => `- ${entry.title} (${entry.status}): ${entry.notes}`)
       .join("\n");
-    const endodonticSubarea = endodonticSubareas.find((item) => item.key === form.endodonticSubarea);
     return [
       `Especialidade: ${selectedModule?.specialtyName}`,
       `Modulo: ${selectedModule?.name}`,
       `Paciente: ${patient?.fullName ?? "Nao vinculado"}`,
-      selectedModule?.id === "endodontics-planning" ? "Nota tecnica: Endodontia nao se subdivide oficialmente em especialidades formais pelo CFO; este modulo usa subareas clinicas e cientificas para organizar o raciocinio." : "",
-      selectedModule?.id === "endodontics-planning" ? `Subarea endodontica: ${endodonticSubarea?.label || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Escopo da subarea: ${endodonticSubarea?.description || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Dente/regiao: ${form.tooth || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Status pulpar: ${form.pulpStatus || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Status periapical: ${form.periapicalStatus || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Achados de imagem: ${form.imagingFindings || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Objetivo endodontico: ${form.endodonticObjective || "Nao informado"}` : "",
-      selectedModule?.id === "endodontics-planning" ? `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}` : "",
+      isEndodonticModule ? "Nota tecnica: Endodontia nao se subdivide oficialmente em especialidades formais pelo CFO; os submodulos organizam frentes clinicas e cientificas para cobranca, fluxo e analise." : "",
+      isEndodonticModule ? `Submodulo endodontico: ${selectedEndodonticSubmodule?.label || "Nao informado"}` : "",
+      isEndodonticModule ? `Escopo do submodulo: ${selectedEndodonticSubmodule?.description || "Nao informado"}` : "",
+      isEndodonticModule ? `Dente/regiao: ${form.tooth || "Nao informado"}` : "",
+      isEndodonticModule ? `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}` : "",
+      isEndodonticModule ? `Status pulpar: ${form.pulpStatus || "Nao informado"}` : "",
+      isEndodonticModule ? `Status periapical: ${form.periapicalStatus || "Nao informado"}` : "",
+      isEndodonticModule ? `Achados de imagem: ${form.imagingFindings || "Nao informado"}` : "",
+      isEndodonticModule ? `Objetivo endodontico: ${form.endodonticObjective || "Nao informado"}` : "",
+      isEndodonticModule ? `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}` : "",
@@ -998,11 +1012,10 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             </div>
             {selectedModule.id === "exam-images-ai" && <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">Este modulo tambem possui a tela dedicada Exames IA para upload e analise visual real.</p>}
             <Field label="Paciente"><select value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}><option value="">Sem paciente</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.fullName}</option>)}</select></Field>
-            {selectedModule.id === "endodontics-planning" && (
+            {isEndodonticModule && (
               <>
-                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Endodontia nao se subdivide oficialmente em especialidades formais pelo CFO. As opcoes abaixo organizam subareas clinicas e cientificas usadas na pratica.</p>
-                <Field label="Subarea endodontica"><select value={form.endodonticSubarea} onChange={(e) => setForm({ ...form, endodonticSubarea: e.target.value })}>{endodonticSubareas.map((subarea) => <option key={subarea.key} value={subarea.key}>{subarea.label}</option>)}</select></Field>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{endodonticSubareas.find((item) => item.key === form.endodonticSubarea)?.description}</p>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Endodontia nao se subdivide oficialmente em especialidades formais pelo CFO. Este item e tratado como submodulo comercial e funcional dentro da especialidade.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedEndodonticSubmodule?.description} Custo do submodulo: {money(selectedEndodonticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
                 <Field label="Dente/regiao"><input value={form.tooth} onChange={(e) => setForm({ ...form, tooth: e.target.value })} /></Field>
                 <Field label="Hipotese diagnostica"><input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} /></Field>
                 <Field label="Status pulpar"><input value={form.pulpStatus} onChange={(e) => setForm({ ...form, pulpStatus: e.target.value })} placeholder="Ex.: pulpite irreversivel, necrose, polpa normal..." /></Field>
