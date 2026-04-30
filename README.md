@@ -232,7 +232,18 @@ Todos os modulos de especialidade ativos possuem acoes de IA:
 
 Perguntas para IA sao cobradas por pergunta realizada, independentemente da especialidade perguntada estar ativa como modulo. Isso permite que uma clinica assine uma especialidade especifica, mas ainda faca perguntas pontuais sobre outras areas usando a tela `Uso de IA`. No MVP, `specialty-question` gera um evento `AI_QUESTION` e aplica uma cobranca minima por pergunta, alem do registro de tokens em `AIUsageLog`.
 
-O modulo `Planejamento endodontico` possui campos especificos para dente/regiao, hipotese diagnostica, canais, testes e observacoes, usados como contexto para a IA.
+O modulo `Planejamento endodontico` organiza a Endodontia por subareas clinicas e cientificas, sem tratar essas subareas como especialidades formais reconhecidas pelo CFO. A ficha inclui:
+
+- Endodontia clinica convencional;
+- Endodontia microscopica;
+- Endodontia cirurgica / parendodontica;
+- Endodontia regenerativa;
+- Endodontia biologica / vital;
+- Diagnostico endodontico avancado;
+- Microbiologia endodontica;
+- Endodontia tecnologica.
+
+Campos especificos de Endodontia entram no registro e no contexto de IA: subarea, dente/regiao, hipotese diagnostica, status pulpar, status periapical, achados de imagem, objetivo endodontico, canais, testes e observacoes.
 
 O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
 

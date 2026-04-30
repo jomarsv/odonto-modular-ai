@@ -130,6 +130,49 @@ const tabModules: Partial<Record<(typeof tabs)[number][0], string[]>> = {
   billing: ["billing"]
 };
 
+const endodonticSubareas = [
+  {
+    key: "clinical-conventional",
+    label: "Endodontia clinica convencional",
+    description: "Tratamento de canal, retratamento, controle de infeccoes pulpares e diagnostico de dor endodontica."
+  },
+  {
+    key: "microscopic",
+    label: "Endodontia microscopica",
+    description: "Uso de microscopio operatorio para canais calcificados, instrumentos fraturados e anatomias complexas."
+  },
+  {
+    key: "surgical",
+    label: "Endodontia cirurgica / parendodontica",
+    description: "Apicectomia, curetagem periapical, retrobturacao e manejo de falhas do tratamento convencional."
+  },
+  {
+    key: "regenerative",
+    label: "Endodontia regenerativa",
+    description: "Regeneracao tecidual e manejo de dentes imaturos com necrose pulpar e raiz incompleta."
+  },
+  {
+    key: "biological-vital",
+    label: "Endodontia biologica / vital",
+    description: "Preservacao da polpa viva, capeamentos pulpares, pulpotomia e tratamentos conservadores."
+  },
+  {
+    key: "advanced-diagnosis",
+    label: "Diagnostico endodontico avancado",
+    description: "Testes de vitalidade, interpretacao de dor e correlacao com radiografia ou CBCT."
+  },
+  {
+    key: "microbiology",
+    label: "Microbiologia endodontica",
+    description: "Biofilmes, bacterias dos canais radiculares, infeccao persistente e resistencia microbiana."
+  },
+  {
+    key: "technology",
+    label: "Endodontia tecnologica",
+    description: "Instrumentacao rotatoria/reciprocante, localizadores apicais e sistemas avancados de irrigacao."
+  }
+];
+
 function money(value: number | string) {
   return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -786,9 +829,14 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     title: "",
     notes: "",
     status: "OPEN",
+    endodonticSubarea: "clinical-conventional",
     tooth: "",
     diagnosis: "",
     canalNotes: "",
+    pulpStatus: "",
+    periapicalStatus: "",
+    imagingFindings: "",
+    endodonticObjective: "",
     skeletalClass: "",
     malocclusion: "",
     orthodonticObjectives: "",
@@ -823,9 +871,14 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       title: "",
       notes: "",
       status: "OPEN",
+      endodonticSubarea: "clinical-conventional",
       tooth: "",
       diagnosis: "",
       canalNotes: "",
+      pulpStatus: "",
+      periapicalStatus: "",
+      imagingFindings: "",
+      endodonticObjective: "",
       skeletalClass: "",
       malocclusion: "",
       orthodonticObjectives: "",
@@ -836,9 +889,16 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   }
   function buildSpecialtyNotes() {
     if (selectedModule?.id === "endodontics-planning") {
+      const subarea = endodonticSubareas.find((item) => item.key === form.endodonticSubarea);
       return [
+        `Subarea clinica/cientifica: ${subarea?.label || "Nao informado"}`,
+        `Escopo: ${subarea?.description || "Nao informado"}`,
         `Dente/regiao: ${form.tooth || "Nao informado"}`,
         `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}`,
+        `Status pulpar: ${form.pulpStatus || "Nao informado"}`,
+        `Status periapical: ${form.periapicalStatus || "Nao informado"}`,
+        `Achados de imagem: ${form.imagingFindings || "Nao informado"}`,
+        `Objetivo endodontico: ${form.endodonticObjective || "Nao informado"}`,
         `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}`,
         `Notas gerais: ${form.notes || "Nao informado"}`
       ].join("\n");
@@ -859,12 +919,20 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       .slice(0, 5)
       .map((entry) => `- ${entry.title} (${entry.status}): ${entry.notes}`)
       .join("\n");
+    const endodonticSubarea = endodonticSubareas.find((item) => item.key === form.endodonticSubarea);
     return [
       `Especialidade: ${selectedModule?.specialtyName}`,
       `Modulo: ${selectedModule?.name}`,
       `Paciente: ${patient?.fullName ?? "Nao vinculado"}`,
+      selectedModule?.id === "endodontics-planning" ? "Nota tecnica: Endodontia nao se subdivide oficialmente em especialidades formais pelo CFO; este modulo usa subareas clinicas e cientificas para organizar o raciocinio." : "",
+      selectedModule?.id === "endodontics-planning" ? `Subarea endodontica: ${endodonticSubarea?.label || "Nao informado"}` : "",
+      selectedModule?.id === "endodontics-planning" ? `Escopo da subarea: ${endodonticSubarea?.description || "Nao informado"}` : "",
       selectedModule?.id === "endodontics-planning" ? `Dente/regiao: ${form.tooth || "Nao informado"}` : "",
       selectedModule?.id === "endodontics-planning" ? `Hipotese diagnostica: ${form.diagnosis || "Nao informado"}` : "",
+      selectedModule?.id === "endodontics-planning" ? `Status pulpar: ${form.pulpStatus || "Nao informado"}` : "",
+      selectedModule?.id === "endodontics-planning" ? `Status periapical: ${form.periapicalStatus || "Nao informado"}` : "",
+      selectedModule?.id === "endodontics-planning" ? `Achados de imagem: ${form.imagingFindings || "Nao informado"}` : "",
+      selectedModule?.id === "endodontics-planning" ? `Objetivo endodontico: ${form.endodonticObjective || "Nao informado"}` : "",
       selectedModule?.id === "endodontics-planning" ? `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
@@ -932,8 +1000,15 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             <Field label="Paciente"><select value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })}><option value="">Sem paciente</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.fullName}</option>)}</select></Field>
             {selectedModule.id === "endodontics-planning" && (
               <>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Endodontia nao se subdivide oficialmente em especialidades formais pelo CFO. As opcoes abaixo organizam subareas clinicas e cientificas usadas na pratica.</p>
+                <Field label="Subarea endodontica"><select value={form.endodonticSubarea} onChange={(e) => setForm({ ...form, endodonticSubarea: e.target.value })}>{endodonticSubareas.map((subarea) => <option key={subarea.key} value={subarea.key}>{subarea.label}</option>)}</select></Field>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{endodonticSubareas.find((item) => item.key === form.endodonticSubarea)?.description}</p>
                 <Field label="Dente/regiao"><input value={form.tooth} onChange={(e) => setForm({ ...form, tooth: e.target.value })} /></Field>
                 <Field label="Hipotese diagnostica"><input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} /></Field>
+                <Field label="Status pulpar"><input value={form.pulpStatus} onChange={(e) => setForm({ ...form, pulpStatus: e.target.value })} placeholder="Ex.: pulpite irreversivel, necrose, polpa normal..." /></Field>
+                <Field label="Status periapical"><input value={form.periapicalStatus} onChange={(e) => setForm({ ...form, periapicalStatus: e.target.value })} placeholder="Ex.: normal, periodontite apical, abscesso..." /></Field>
+                <Field label="Achados de imagem"><textarea rows={3} value={form.imagingFindings} onChange={(e) => setForm({ ...form, imagingFindings: e.target.value })} placeholder="Radiografia, CBCT, rarefacao, reabsorcao, anatomia radicular..." /></Field>
+                <Field label="Objetivo endodontico"><textarea rows={3} value={form.endodonticObjective} onChange={(e) => setForm({ ...form, endodonticObjective: e.target.value })} placeholder="Tratamento, retratamento, preservacao de vitalidade, regeneracao, cirurgia..." /></Field>
                 <Field label="Canais, testes e observacoes"><textarea rows={4} value={form.canalNotes} onChange={(e) => setForm({ ...form, canalNotes: e.target.value })} /></Field>
               </>
             )}
