@@ -325,6 +325,75 @@ const aestheticSubmodules = [
   }
 ];
 
+const pediatricSubmodules = [
+  {
+    moduleKey: "pediatric-dentistry",
+    label: "Odontologia para bebes",
+    description: "Atendimento desde os primeiros meses, orientacao aos pais, aleitamento, higiene inicial e habitos.",
+    monthlyPrice: 79.9
+  },
+  {
+    moduleKey: "pediatric-preventive",
+    label: "Odontopediatria preventiva",
+    description: "Fluor, selantes, educacao em saude bucal, controle de dieta e prevencao precoce.",
+    monthlyPrice: 69.9
+  },
+  {
+    moduleKey: "pediatric-restorative",
+    label: "Dentistica em odontopediatria",
+    description: "Restauracoes infantis, materiais especificos e tratamento de carie em criancas.",
+    monthlyPrice: 89.9
+  },
+  {
+    moduleKey: "pediatric-behavior",
+    label: "Manejo comportamental infantil",
+    description: "Condicionamento psicologico, controle de ansiedade, comunicacao adaptada e sedacao consciente quando indicada.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "pediatric-deciduous-endo",
+    label: "Endodontia em dentes deciduos",
+    description: "Pulpotomia, pulpectomia e controle de infeccoes em dentes de leite.",
+    monthlyPrice: 99.9
+  },
+  {
+    moduleKey: "pediatric-interceptive",
+    label: "Odontopediatria interceptiva",
+    description: "Ortopedia funcional, correcao de habitos bucais e intervencoes precoces de crescimento.",
+    monthlyPrice: 109.9
+  },
+  {
+    moduleKey: "pediatric-trauma",
+    label: "Traumatologia dentaria infantil",
+    description: "Fraturas, avulsoes, luxacoes e acompanhamento de trauma dentario em criancas.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "pediatric-hospital",
+    label: "Odontologia hospitalar pediatrica",
+    description: "Atendimento infantil complexo, necessidades especiais, anestesia geral e condicoes sistemicas.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "pediatric-special-needs",
+    label: "Pacientes infantis com necessidades especiais",
+    description: "Autismo, sindromes geneticas, deficiencias motoras ou cognitivas e adaptacao de atendimento.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "pediatric-cariology",
+    label: "Cariologia infantil",
+    description: "Progressao da carie, fatores de risco, estrategias de controle e acompanhamento preventivo.",
+    monthlyPrice: 99.9
+  },
+  {
+    moduleKey: "pediatric-digital-ai",
+    label: "Odontopediatria digital / IA",
+    description: "Monitoramento remoto de higiene, educacao gamificada, orientacao aos pais e predicao de risco de carie.",
+    monthlyPrice: 159.9
+  }
+];
+
 function money(value: number | string) {
   return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -1001,6 +1070,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     aestheticMaterials: "",
     gingivalAesthetics: "",
     digitalSmilePlan: "",
+    childAgeContext: "",
+    caregiverGuidance: "",
+    preventionPlan: "",
+    behaviorManagement: "",
+    pediatricClinicalFindings: "",
+    pediatricRiskFactors: "",
     skeletalClass: "",
     malocclusion: "",
     orthodonticObjectives: "",
@@ -1015,6 +1090,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   const isImplantologyModule = Boolean(selectedImplantologySubmodule);
   const selectedAestheticSubmodule = aestheticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isAestheticModule = Boolean(selectedAestheticSubmodule);
+  const selectedPediatricSubmodule = pediatricSubmodules.find((item) => item.moduleKey === selectedModule?.id);
+  const isPediatricModule = Boolean(selectedPediatricSubmodule);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const loadEntries = () => {
     if (selectedModuleId) api.get<Array<Record<string, any>>>(`/module-workspace/${selectedModuleId}`).then(setEntries);
@@ -1061,6 +1138,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       aestheticMaterials: "",
       gingivalAesthetics: "",
       digitalSmilePlan: "",
+      childAgeContext: "",
+      caregiverGuidance: "",
+      preventionPlan: "",
+      behaviorManagement: "",
+      pediatricClinicalFindings: "",
+      pediatricRiskFactors: "",
       skeletalClass: "",
       malocclusion: "",
       orthodonticObjectives: "",
@@ -1118,6 +1201,19 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
         `Notas gerais: ${form.notes || "Nao informado"}`
       ].join("\n");
     }
+    if (isPediatricModule) {
+      return [
+        `Submodulo de odontopediatria: ${selectedPediatricSubmodule?.label || "Nao informado"}`,
+        `Escopo: ${selectedPediatricSubmodule?.description || "Nao informado"}`,
+        `Idade/fase infantil: ${form.childAgeContext || "Nao informado"}`,
+        `Orientacao aos pais/responsaveis: ${form.caregiverGuidance || "Nao informado"}`,
+        `Prevencao, dieta e higiene: ${form.preventionPlan || "Nao informado"}`,
+        `Manejo comportamental: ${form.behaviorManagement || "Nao informado"}`,
+        `Achados clinicos pediatricos: ${form.pediatricClinicalFindings || "Nao informado"}`,
+        `Fatores de risco e necessidades especiais: ${form.pediatricRiskFactors || "Nao informado"}`,
+        `Notas gerais: ${form.notes || "Nao informado"}`
+      ].join("\n");
+    }
     return form.notes;
   }
   function buildSpecialtyAIInput() {
@@ -1158,6 +1254,15 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       isAestheticModule ? `Materiais e tecnica: ${form.aestheticMaterials || "Nao informado"}` : "",
       isAestheticModule ? `Estetica gengival: ${form.gingivalAesthetics || "Nao informado"}` : "",
       isAestheticModule ? `Planejamento digital/DSD/IA: ${form.digitalSmilePlan || "Nao informado"}` : "",
+      isPediatricModule ? "Nota tecnica: Odontopediatria usa submodulos funcionais e comerciais para organizar atendimento infantil, prevencao, manejo comportamental, casos especiais e IA." : "",
+      isPediatricModule ? `Submodulo de odontopediatria: ${selectedPediatricSubmodule?.label || "Nao informado"}` : "",
+      isPediatricModule ? `Escopo do submodulo: ${selectedPediatricSubmodule?.description || "Nao informado"}` : "",
+      isPediatricModule ? `Idade/fase infantil: ${form.childAgeContext || "Nao informado"}` : "",
+      isPediatricModule ? `Orientacao aos pais/responsaveis: ${form.caregiverGuidance || "Nao informado"}` : "",
+      isPediatricModule ? `Prevencao, dieta e higiene: ${form.preventionPlan || "Nao informado"}` : "",
+      isPediatricModule ? `Manejo comportamental: ${form.behaviorManagement || "Nao informado"}` : "",
+      isPediatricModule ? `Achados clinicos pediatricos: ${form.pediatricClinicalFindings || "Nao informado"}` : "",
+      isPediatricModule ? `Fatores de risco e necessidades especiais: ${form.pediatricRiskFactors || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Classe esqueletica/relacao sagital: ${form.skeletalClass || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Maloclusao e achados principais: ${form.malocclusion || "Nao informado"}` : "",
       selectedModule?.id === "orthodontics-planning" ? `Objetivos ortodonticos: ${form.orthodonticObjectives || "Nao informado"}` : "",
@@ -1264,6 +1369,18 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
                 <Field label="Materiais e tecnica"><textarea rows={3} value={form.aestheticMaterials} onChange={(e) => setForm({ ...form, aestheticMaterials: e.target.value })} placeholder="Resina composta, ceramica, faceta, lente, CAD/CAM..." /></Field>
                 <Field label="Estetica gengival"><textarea rows={3} value={form.gingivalAesthetics} onChange={(e) => setForm({ ...form, gingivalAesthetics: e.target.value })} placeholder="Sorriso gengival, zenite, gengivoplastia, contorno gengival..." /></Field>
                 <Field label="Planejamento digital / DSD / IA"><textarea rows={3} value={form.digitalSmilePlan} onChange={(e) => setForm({ ...form, digitalSmilePlan: e.target.value })} placeholder="Fotos, DSD, mockup, simulacao, previsao de resultado por IA..." /></Field>
+              </>
+            )}
+            {isPediatricModule && (
+              <>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Odontopediatria e organizada aqui em submodulos comerciais e funcionais para atendimento infantil, prevencao, comportamento, casos especiais e IA.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedPediatricSubmodule?.description} Custo do submodulo: {money(selectedPediatricSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <Field label="Idade / fase infantil"><input value={form.childAgeContext} onChange={(e) => setForm({ ...form, childAgeContext: e.target.value })} placeholder="Ex.: bebe, denticao decidua, mista, adolescente..." /></Field>
+                <Field label="Orientacao aos pais / responsaveis"><textarea rows={3} value={form.caregiverGuidance} onChange={(e) => setForm({ ...form, caregiverGuidance: e.target.value })} placeholder="Aleitamento, higiene inicial, habitos, rotina familiar, retorno..." /></Field>
+                <Field label="Prevencao, dieta e higiene"><textarea rows={3} value={form.preventionPlan} onChange={(e) => setForm({ ...form, preventionPlan: e.target.value })} placeholder="Fluor, selantes, dieta, controle de biofilme, educacao em saude..." /></Field>
+                <Field label="Manejo comportamental"><textarea rows={3} value={form.behaviorManagement} onChange={(e) => setForm({ ...form, behaviorManagement: e.target.value })} placeholder="Ansiedade, condicionamento, comunicacao adaptada, sedacao consciente..." /></Field>
+                <Field label="Achados clinicos pediatricos"><textarea rows={3} value={form.pediatricClinicalFindings} onChange={(e) => setForm({ ...form, pediatricClinicalFindings: e.target.value })} placeholder="Carie, trauma, polpa decidua, oclusao, necessidades hospitalares..." /></Field>
+                <Field label="Fatores de risco e necessidades especiais"><textarea rows={3} value={form.pediatricRiskFactors} onChange={(e) => setForm({ ...form, pediatricRiskFactors: e.target.value })} placeholder="Risco de carie, autismo, sindromes, deficiencias motoras/cognitivas..." /></Field>
               </>
             )}
             <Field label="Titulo"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>

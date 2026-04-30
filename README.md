@@ -278,6 +278,22 @@ A Odontologia Estetica/Dentistica Estetica tambem e organizada em submodulos com
 
 Campos especificos de cada submodulo de Odontologia Estetica entram no registro e no contexto de IA: submodulo, escopo, queixa/objetivo estetico, meta de cor/clareamento, forma/proporcao/reanatomizacao, materiais e tecnica, estetica gengival, planejamento digital/DSD/IA e observacoes.
 
+A Odontopediatria tambem e organizada em submodulos comerciais e funcionais. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
+
+- Odontologia para bebes: R$ 79,90/mes;
+- Odontopediatria preventiva: R$ 69,90/mes;
+- Dentistica em odontopediatria: R$ 89,90/mes;
+- Manejo comportamental infantil: R$ 119,90/mes;
+- Endodontia em dentes deciduos: R$ 99,90/mes;
+- Odontopediatria interceptiva: R$ 109,90/mes;
+- Traumatologia dentaria infantil: R$ 119,90/mes;
+- Odontologia hospitalar pediatrica: R$ 149,90/mes;
+- Pacientes infantis com necessidades especiais: R$ 139,90/mes;
+- Cariologia infantil: R$ 99,90/mes;
+- Odontopediatria digital / IA: R$ 159,90/mes.
+
+Campos especificos de cada submodulo de Odontopediatria entram no registro e no contexto de IA: submodulo, escopo, idade/fase infantil, orientacao aos pais/responsaveis, prevencao/dieta/higiene, manejo comportamental, achados clinicos pediatricos, fatores de risco, necessidades especiais e observacoes.
+
 O modulo `Planejamento ortodontico` possui campos especificos para classe esqueletica/relacao sagital, maloclusao e achados principais, e objetivos ortodonticos. Esses dados entram no registro do modulo e tambem no contexto de `Analisar IA` e `Perguntar IA`.
 
 ### Balcao LEO-Tech de funcionalidades personalizadas
