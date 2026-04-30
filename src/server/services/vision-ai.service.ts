@@ -28,14 +28,6 @@ function detailForPrecision(precisionLevel: AIPrecisionLevel) {
   return precisionLevel === "SPECIALIST" || precisionLevel === "ADVANCED" ? "high" : "auto";
 }
 
-function fallbackAnalysis(input: {
-  examType: string;
-  fileName: string;
-  clinicalQuestion?: string;
-}) {
-  return `Analise visual simulada de exame odontologico\n\nO provider de visao computacional real nao esta configurado ou o arquivo da imagem nao esta disponivel no runtime atual.\n\nAchados assistivos simulados:\n- Conferir nitidez, contraste, enquadramento e identificacao do paciente.\n- Avaliar estruturas dentarias e osseas relevantes ao tipo de exame: ${input.examType}.\n- Correlacionar com anamnese, exame clinico e historico radiografico.\n\nHipoteses/diagnostico assistivo: nao determinado neste modo simulado.\n\nPergunta clinica: ${input.clinicalQuestion || "Nao informada"}\nArquivo: ${input.fileName}\n\n${disclaimer}`;
-}
-
 export async function analyzeExamImage(input: {
   clinicId: string;
   userId: string;
@@ -49,55 +41,45 @@ export async function analyzeExamImage(input: {
   precisionLevel: AIPrecisionLevel;
 }) {
   const client = openaiClient();
-  let text = "";
-  let inputTokens = 0;
-  let outputTokens = 0;
-  let modelName = config.openaiVisionModel;
-  let usedProvider = "openai";
+  if (!client) throw new Error("OPENAI_API_KEY nao configurada. A analise de imagem exige visao computacional real.");
+  if (!input.filePath) throw new Error("Arquivo da imagem indisponivel para analise visual real.");
 
-  try {
-    if (!client || !input.filePath) throw new Error("Vision provider unavailable.");
-    const bytes = await fs.readFile(input.filePath);
-    const imageDataUrl = `data:${input.fileType};base64,${bytes.toString("base64")}`;
-    const prompt = [
-      "Voce e um assistente de apoio odontologico para analise visual de exames.",
-      "Analise a imagem enviada e produza um relatorio estruturado em portugues do Brasil.",
-      "Nao afirme certeza diagnostica. Use linguagem de hipotese, achado sugestivo e necessidade de confirmacao.",
-      "Inclua obrigatoriamente: qualidade tecnica, achados visuais, hipoteses diagnosticas assistivas, limitacoes, recomendacoes de revisao profissional e proximos passos.",
-      `Paciente: ${input.patientName}`,
-      `Tipo de exame: ${input.examType}`,
-      `Pergunta clinica: ${input.clinicalQuestion || "Nao informada"}`,
-      `Nivel de precisao: ${input.precisionLevel}`
-    ].join("\n");
-    const response = await client.responses.create({
-      model: modelName,
-      input: [
-        {
-          role: "user",
-          content: [
-            { type: "input_text", text: prompt },
-            { type: "input_image", image_url: imageDataUrl, detail: detailForPrecision(input.precisionLevel) }
-          ]
-        }
-      ]
-    });
-    text = `${response.output_text}\n\n${disclaimer}`;
-    inputTokens = roughTokenCount(prompt) + imageTokenEstimate(input.precisionLevel);
-    outputTokens = roughTokenCount(text);
-  } catch {
-    usedProvider = "mock";
-    modelName = "mock-vision";
-    text = fallbackAnalysis(input);
-    inputTokens = roughTokenCount(`${input.examType} ${input.fileName} ${input.clinicalQuestion ?? ""}`) + 300;
-    outputTokens = roughTokenCount(text);
-  }
+  const bytes = await fs.readFile(input.filePath);
+  const imageDataUrl = `data:${input.fileType};base64,${bytes.toString("base64")}`;
+  const prompt = [
+    "Voce e um assistente de apoio odontologico para analise visual de exames.",
+    "Analise os pixels da imagem enviada e produza um relatorio estruturado em portugues do Brasil.",
+    "Aponte achados visuais observaveis e hipoteses diagnosticas odontologicas assistivas quando houver elementos suficientes.",
+    "Nao invente achados que nao estejam visiveis. Quando a imagem for inadequada, explique exatamente a limitacao tecnica.",
+    "Inclua obrigatoriamente estas secoes: Qualidade tecnica, Achados visuais, Hipoteses diagnosticas assistivas, Condutas sugeridas para confirmacao, Limitacoes e Aviso profissional.",
+    "Nao diga que a analise e simulada.",
+    `Paciente: ${input.patientName}`,
+    `Tipo de exame: ${input.examType}`,
+    `Pergunta clinica: ${input.clinicalQuestion || "Nao informada"}`,
+    `Nivel de precisao: ${input.precisionLevel}`
+  ].join("\n");
+  const response = await client.responses.create({
+    model: config.openaiVisionModel,
+    input: [
+      {
+        role: "user",
+        content: [
+          { type: "input_text", text: prompt },
+          { type: "input_image", image_url: imageDataUrl, detail: detailForPrecision(input.precisionLevel) }
+        ]
+      }
+    ]
+  });
+  const text = `${response.output_text}\n\n${disclaimer}`;
+  const inputTokens = roughTokenCount(prompt) + imageTokenEstimate(input.precisionLevel);
+  const outputTokens = roughTokenCount(text);
 
   const totalTokens = inputTokens + outputTokens;
   const estimatedCost = estimateAICost({
     inputTokens,
     outputTokens,
     precisionLevel: input.precisionLevel,
-    modelName,
+    modelName: config.openaiVisionModel,
     featureKey: "exam-image-analysis"
   });
 
@@ -106,14 +88,14 @@ export async function analyzeExamImage(input: {
     userId: input.userId,
     patientId: input.patientId,
     featureKey: "exam-image-analysis",
-    modelName,
+    modelName: config.openaiVisionModel,
     precisionLevel: input.precisionLevel,
     inputTokens,
     outputTokens,
     totalTokens,
     estimatedCost,
     requestSummary: `${input.examType}: ${input.clinicalQuestion ?? ""}`.slice(0, 500),
-    metadata: { provider: usedProvider, fileName: input.fileName, fileType: input.fileType },
+    metadata: { provider: "openai", fileName: input.fileName, fileType: input.fileType },
     createdAt: now()
   });
 
@@ -125,5 +107,5 @@ export async function analyzeExamImage(input: {
     usageLogId: usageLog.id
   });
 
-  return { text, usage: usageLog, disclaimer, provider: usedProvider };
+  return { text, usage: usageLog, disclaimer, provider: "openai" };
 }

@@ -93,18 +93,29 @@ examImageRouter.post(
     const patient = await getById<Record<string, unknown>>(collectionNames.patients, String(exam.patientId));
     if (!patient || patient.clinicId !== user.clinicId) throw new HttpError(404, "Paciente nao encontrado.");
 
-    const analysis = await analyzeExamImage({
-      precisionLevel: data.precisionLevel,
-      userId: user.id,
-      clinicId: user.clinicId,
-      patientId: String(exam.patientId),
-      patientName: String(patient.fullName ?? ""),
-      examType: String(exam.examType ?? "Imagem odontologica"),
-      fileName: String(exam.fileName ?? ""),
-      fileType: String(exam.fileType ?? "image/jpeg"),
-      filePath: typeof exam.filePath === "string" ? exam.filePath : null,
-      clinicalQuestion: data.clinicalQuestion || String(exam.clinicalQuestion ?? "")
-    });
+    let analysis;
+    try {
+      analysis = await analyzeExamImage({
+        precisionLevel: data.precisionLevel,
+        userId: user.id,
+        clinicId: user.clinicId,
+        patientId: String(exam.patientId),
+        patientName: String(patient.fullName ?? ""),
+        examType: String(exam.examType ?? "Imagem odontologica"),
+        fileName: String(exam.fileName ?? ""),
+        fileType: String(exam.fileType ?? "image/jpeg"),
+        filePath: typeof exam.filePath === "string" ? exam.filePath : null,
+        clinicalQuestion: data.clinicalQuestion || String(exam.clinicalQuestion ?? "")
+      });
+    } catch (error) {
+      await updateDoc(collectionNames.examImages, examId, {
+        analysisStatus: "FAILED",
+        analysisResult: error instanceof Error ? error.message : "Falha na analise visual real.",
+        analysisProvider: "openai",
+        analyzedAt: now()
+      });
+      throw new HttpError(503, error instanceof Error ? error.message : "Falha na analise visual real.");
+    }
 
     const updated = await updateDoc(collectionNames.examImages, examId, {
       analysisStatus: "COMPLETED",

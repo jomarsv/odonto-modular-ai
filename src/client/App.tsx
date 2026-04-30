@@ -529,7 +529,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
       clinicalQuestion: form.clinicalQuestion
     });
     setSelectedResult(response.analysis.text);
-    onSaved(response.analysis.provider === "openai" ? "Analise visual real registrada." : "Analise mock registrada.");
+    onSaved("Analise visual real registrada.");
     load();
   }
   return (
@@ -542,7 +542,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
           <Field label="Precisao da analise"><select value={form.precisionLevel} onChange={(e) => setForm({ ...form, precisionLevel: e.target.value })}>{["STANDARD", "ADVANCED", "SPECIALIST"].map((level) => <option key={level}>{level}</option>)}</select></Field>
           <Field label="Imagem"><input required type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
           <button className="btn-primary">Enviar imagem</button>
-          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">A IA pode interpretar pixels quando OpenAI estiver configurada. O resultado e apoio profissional, nao laudo definitivo. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
+          <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Este modulo exige OpenAI Vision configurado e interpreta pixels da imagem. O resultado e apoio profissional, nao laudo definitivo. A decisao clinica final deve ser tomada por cirurgiao-dentista habilitado.</p>
         </form>
         <div className="space-y-4">
           <div className="panel overflow-hidden">

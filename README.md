@@ -301,7 +301,9 @@ OPENAI_API_KEY=sk-...
 OPENAI_VISION_MODEL=gpt-4.1-mini
 ```
 
-Quando configurado, o backend le o arquivo da imagem, envia os pixels em Base64 para o modelo multimodal e gera um relatorio com qualidade tecnica, achados visuais, hipoteses diagnosticas assistivas, limitacoes e proximos passos. Se a chave nao estiver configurada ou o arquivo nao estiver disponivel no runtime, o sistema volta ao mock seguro.
+Quando configurado, o backend le o arquivo da imagem, envia os pixels em Base64 para o modelo multimodal e gera um relatorio com qualidade tecnica, achados visuais, hipoteses diagnosticas assistivas, limitacoes e proximos passos.
+
+Este modulo nao usa fallback simulado para apresentacao clinica: se `OPENAI_API_KEY` nao estiver configurada ou se o arquivo nao estiver disponivel no runtime, a analise falha e o exame fica com status `FAILED`.
 
 Importante: o relatorio nao e laudo definitivo nem substitui especialista. A OpenAI documenta que modelos de visao tem limitacoes para imagens medicas especializadas; por isso o app apresenta resultados como apoio e exige revisao por cirurgiao-dentista habilitado.
 
@@ -452,7 +454,7 @@ src/
 ## Limitacoes do MVP
 
 - A IA real ainda nao esta conectada a um provider externo.
-- A analise de imagens depende de `OPENAI_API_KEY` e da disponibilidade do arquivo no runtime. Em Vercel, uploads em `/tmp` nao sao armazenamento persistente; para uso real, trocar por S3, Firebase Storage ou equivalente.
+- A analise de imagens depende de `OPENAI_API_KEY` e da disponibilidade do arquivo no runtime. Em Vercel, uploads em `/tmp` nao sao armazenamento persistente; para demonstracao, envie e analise a imagem na mesma sessao. Para uso real, trocar por S3, Firebase Storage ou equivalente.
 - Upload usa armazenamento local em desenvolvimento e `/tmp` em Vercel; arquivos nao sao persistentes entre execucoes serverless.
 - Nao ha gateway de pagamento.
 - O checkout de assinatura ainda e mock; nao captura cartao nem boleto.
