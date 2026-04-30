@@ -686,10 +686,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     aiQuestion: ""
   });
   const [featureForm, setFeatureForm] = useState({ title: "", description: "", expectedBenefit: "", suggestedMonthlyBudget: "" });
-  const [reviewForm, setReviewForm] = useState({ reviewNotes: "", monthlyPrice: "99.9" });
   const [aiResult, setAiResult] = useState("");
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
-  const canReviewCustomFeatures = ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
   useEffect(() => { api.get<Patient[]>("/patients").then(setPatients); }, [api]);
   const loadEntries = () => {
     if (selectedModuleId) api.get<Array<Record<string, any>>>(`/module-workspace/${selectedModuleId}`).then(setEntries);
@@ -796,14 +794,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     onSaved("Solicitacao enviada para analise.");
     loadFeatureRequests();
   }
-  async function reviewCustomFeature(request: CustomFeatureRequest, status: "APPROVED" | "REJECTED") {
-    await api.patch(`/custom-features/${request.id}/review`, {
-      status,
-      reviewNotes: reviewForm.reviewNotes || (status === "APPROVED" ? "Aprovado para uso personalizado." : "Nao aprovado neste momento."),
-      monthlyPrice: status === "APPROVED" ? Number(reviewForm.monthlyPrice || 0) : 0
-    });
-    onSaved(status === "APPROVED" ? "Funcionalidade personalizada aprovada." : "Solicitacao rejeitada.");
-    loadFeatureRequests();
+  function customFeatureStatusLabel(request: CustomFeatureRequest) {
+    if (request.status === "REQUESTED") return "EM ANALISE PELA LEO-TECH";
+    if (request.status === "APPROVED" && request.approvedForUserId === session.user.id) return "ADICIONADA PARA VOCE";
+    if (request.status === "APPROVED") return "APROVADA PELA LEO-TECH";
+    if (request.status === "REJECTED") return "NAO APROVADA";
+    return request.status;
   }
   if (!activeSpecialtyModules.length) return <Section title="Especialidades"><p>Nenhum modulo de especialidade ativo.</p></Section>;
   return (
@@ -853,39 +849,27 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
           <div className="space-y-4">
             <div className="panel p-4">
               <div className="mb-3">
-                <p className="text-xs font-semibold text-primary-700">Balcao de funcionalidades</p>
+                <p className="text-xs font-semibold text-primary-700">Balcao LEO-Tech</p>
                 <h3 className="font-semibold">Extras personalizados</h3>
-                <p className="mt-1 text-sm text-slate-500">Solicite uma funcionalidade especifica para esta especialidade. Se aprovada, ela fica liberada somente para o usuario solicitante e entra como custo mensal adicional.</p>
+                <p className="mt-1 text-sm text-slate-500">Solicite uma funcionalidade especifica para esta especialidade. A equipe LEO-Tech analisa com especialistas em odontologia e, se aprovar, adiciona o recurso somente para o usuario solicitante com custo mensal adicional.</p>
               </div>
               <form onSubmit={requestCustomFeature} className="grid gap-3 lg:grid-cols-2">
                 <Field label="Funcionalidade desejada"><input required value={featureForm.title} onChange={(e) => setFeatureForm({ ...featureForm, title: e.target.value })} placeholder="Ex.: checklist de caso complexo" /></Field>
                 <Field label="Orcamento mensal sugerido"><input type="number" min="0" step="0.01" value={featureForm.suggestedMonthlyBudget} onChange={(e) => setFeatureForm({ ...featureForm, suggestedMonthlyBudget: e.target.value })} /></Field>
                 <Field label="Descricao"><textarea required rows={3} value={featureForm.description} onChange={(e) => setFeatureForm({ ...featureForm, description: e.target.value })} /></Field>
                 <Field label="Beneficio esperado"><textarea required rows={3} value={featureForm.expectedBenefit} onChange={(e) => setFeatureForm({ ...featureForm, expectedBenefit: e.target.value })} /></Field>
-                <div className="lg:col-span-2"><button className="btn-primary">Solicitar analise</button></div>
+                <div className="lg:col-span-2"><button className="btn-primary">Enviar para LEO-Tech</button></div>
               </form>
             </div>
             <div className="panel overflow-hidden">
-              <Table headers={["Funcionalidade", "Solicitante", "Status", "Custo", "Acoes"]}>
+              <Table headers={["Funcionalidade", "Solicitante", "Status", "Custo", "Retorno LEO-Tech"]}>
                 {featureRequests.map((request) => (
                   <tr key={request.id}>
-                    <td><p className="font-medium">{request.title}</p><p className="text-xs text-slate-500">{request.description}</p>{request.reviewNotes && <p className="mt-1 text-xs text-slate-500">Analise: {request.reviewNotes}</p>}</td>
+                    <td><p className="font-medium">{request.title}</p><p className="text-xs text-slate-500">{request.description}</p></td>
                     <td>{request.requestedBy?.name ?? request.requestedBy?.email ?? request.requestedById}</td>
-                    <td>{request.status === "APPROVED" && request.approvedForUserId === session.user.id ? "LIBERADA PARA VOCE" : request.status}</td>
+                    <td>{customFeatureStatusLabel(request)}</td>
                     <td>{money(String(request.monthlyPrice ?? 0))}</td>
-                    <td>
-                      {canReviewCustomFeatures && request.status === "REQUESTED" ? (
-                        <div className="space-y-2">
-                          <input placeholder="Preco mensal" value={reviewForm.monthlyPrice} onChange={(e) => setReviewForm({ ...reviewForm, monthlyPrice: e.target.value })} />
-                          <textarea rows={2} placeholder="Parecer" value={reviewForm.reviewNotes} onChange={(e) => setReviewForm({ ...reviewForm, reviewNotes: e.target.value })} />
-                          <div className="flex gap-2"><button type="button" className="btn-primary" onClick={() => reviewCustomFeature(request, "APPROVED")}>Aprovar</button><button type="button" className="btn-secondary" onClick={() => reviewCustomFeature(request, "REJECTED")}>Rejeitar</button></div>
-                        </div>
-                      ) : request.status === "APPROVED" && request.approvedForUserId === session.user.id ? (
-                        <span className="text-sm text-emerald-700">Disponivel no seu workspace</span>
-                      ) : (
-                        <span className="text-sm text-slate-500">Sem acao</span>
-                      )}
-                    </td>
+                    <td>{request.reviewNotes ? <span className="text-sm text-slate-600">{request.reviewNotes}</span> : <span className="text-sm text-slate-500">Aguardando analise tecnica.</span>}</td>
                   </tr>
                 ))}
               </Table>

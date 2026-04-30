@@ -13,5 +13,9 @@ export const config = {
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET ?? "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-  appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173"
+  appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173",
+  leoTechAdminEmails: (process.env.LEO_TECH_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
 };

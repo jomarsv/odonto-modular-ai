@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { addDoc, collectionNames, db, getById, now, serializeDocs, updateDoc } from "../firestore.js";
+import { config } from "../config.js";
 import { authenticate } from "../middleware/auth.js";
 import { logAction } from "../services/audit.service.js";
 import { createCustomFeatureBillingEvent } from "../services/billing.service.js";
@@ -25,7 +26,11 @@ const reviewSchema = z.object({
 export const customFeatureRouter = Router();
 customFeatureRouter.use(authenticate);
 
-function canReview(role: string) {
+function canReviewAsLeoTech(user: { role: string; email?: string }) {
+  return user.role === "ADMIN" && config.leoTechAdminEmails.includes(String(user.email ?? "").toLowerCase());
+}
+
+function canViewClinicRequests(role: string) {
   return role === "ADMIN" || role === "CLINIC_MANAGER";
 }
 
@@ -47,7 +52,7 @@ customFeatureRouter.get(
       await db().collection(collectionNames.customFeatureRequests).where("clinicId", "==", user.clinicId).get()
     );
     if (moduleId) rows = rows.filter((item) => item.moduleId === moduleId);
-    if (!canReview(user.role)) {
+    if (!canViewClinicRequests(user.role)) {
       rows = rows.filter((item) => item.requestedById === user.id || item.approvedForUserId === user.id);
     }
     const enriched = await Promise.all(
@@ -99,7 +104,7 @@ customFeatureRouter.patch(
   "/:id/review",
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
-    if (!canReview(user.role)) throw new HttpError(403, "Somente gestores podem revisar solicitacoes.");
+    if (!canReviewAsLeoTech(user)) throw new HttpError(403, "Somente a equipe LEO-Tech pode revisar solicitacoes.");
     const data = reviewSchema.parse(req.body);
     const current = await getById<Record<string, unknown>>(collectionNames.customFeatureRequests, String(req.params.id));
     if (!current || current.clinicId !== user.clinicId) throw new HttpError(404, "Solicitacao nao encontrada.");
@@ -107,7 +112,7 @@ customFeatureRouter.patch(
 
     const updated = await updateDoc(collectionNames.customFeatureRequests, String(req.params.id), {
       status: data.status,
-      reviewNotes: data.reviewNotes,
+      reviewNotes: `LEO-Tech: ${data.reviewNotes}`,
       reviewedById: user.id,
       reviewedAt: now(),
       approvedForUserId: data.status === "APPROVED" ? current.requestedById : null,
