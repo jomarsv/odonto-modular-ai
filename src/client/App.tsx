@@ -187,6 +187,81 @@ const endodonticSubmodules = [
   }
 ];
 
+const radiologySubmodules = [
+  {
+    moduleKey: "exam-images-ai",
+    label: "Radiologia com inteligencia artificial",
+    description: "Upload de imagens odontologicas, deteccao assistida, segmentacao, padroes osseos e apoio diagnostico automatizado.",
+    monthlyPrice: 199.9
+  },
+  {
+    moduleKey: "radiology-reports",
+    label: "Laudos radiologicos",
+    description: "Base para laudos de radiografias, tomografias e anexos de imagem.",
+    monthlyPrice: 129.9
+  },
+  {
+    moduleKey: "radiology-intraoral",
+    label: "Radiologia convencional intraoral",
+    description: "Periapical, bite-wing, oclusal, diagnostico de carie, avaliacao endodontica e controle periodontal.",
+    monthlyPrice: 89.9
+  },
+  {
+    moduleKey: "radiology-extraoral",
+    label: "Radiologia extraoral",
+    description: "Panoramica, telerradiografia lateral/frontal, ortodontia, cirurgia e avaliacao geral das arcadas.",
+    monthlyPrice: 99.9
+  },
+  {
+    moduleKey: "radiology-cbct",
+    label: "Tomografia computadorizada CBCT",
+    description: "Imagem 3D de alta precisao para implantodontia, cirurgia bucomaxilofacial e endodontia complexa.",
+    monthlyPrice: 169.9
+  },
+  {
+    moduleKey: "radiology-surgical-planning",
+    label: "Radiologia para planejamento cirurgico",
+    description: "Planejamento de implantes, estruturas anatomicas, trajetos cirurgicos e procedimentos complexos.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "radiology-digital-imaging",
+    label: "Imaginologia digital",
+    description: "Radiografia digital, armazenamento eletronico, processamento e organizacao de imagem.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "radiology-diagnostic-imaging",
+    label: "Diagnostico por imagem",
+    description: "Interpretacao de alteracoes osseas, identificacao de lesoes e diagnostico diferencial.",
+    monthlyPrice: 139.9
+  },
+  {
+    moduleKey: "radiology-oral-pathology",
+    label: "Radiologia para patologias bucais",
+    description: "Cistos, tumores, infeccoes osseas e apoio diagnostico de patologias bucais.",
+    monthlyPrice: 149.9
+  },
+  {
+    moduleKey: "radiology-orthodontic",
+    label: "Radiologia ortodontica",
+    description: "Analise cefalometrica, planejamento ortodontico e avaliacao de crescimento.",
+    monthlyPrice: 119.9
+  },
+  {
+    moduleKey: "radiology-endodontic",
+    label: "Radiologia endodontica",
+    description: "Avaliacao de canais, controle de tratamento e diagnostico de lesoes periapicais.",
+    monthlyPrice: 129.9
+  },
+  {
+    moduleKey: "radiology-implantology",
+    label: "Radiologia para implantodontia",
+    description: "Volume osseo, planejamento de implantes, densidade ossea e estruturas anatomicas.",
+    monthlyPrice: 149.9
+  }
+];
+
 const orthodonticSubmodules = [
   {
     moduleKey: "orthodontics-planning",
@@ -1214,6 +1289,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     periapicalStatus: "",
     imagingFindings: "",
     endodonticObjective: "",
+    radiologyModality: "",
+    radiologyRegion: "",
+    radiologyIndication: "",
+    radiologyFindings: "",
+    radiologyHypothesis: "",
+    radiologyRecommendation: "",
     implantRegion: "",
     boneAssessment: "",
     prostheticPlan: "",
@@ -1248,6 +1329,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   const selectedModule = activeSpecialtyModules.find((module) => module.id === selectedModuleId);
   const selectedEndodonticSubmodule = endodonticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isEndodonticModule = Boolean(selectedEndodonticSubmodule);
+  const selectedRadiologySubmodule = radiologySubmodules.find((item) => item.moduleKey === selectedModule?.id);
+  const isRadiologyModule = Boolean(selectedRadiologySubmodule);
   const selectedOrthodonticSubmodule = orthodonticSubmodules.find((item) => item.moduleKey === selectedModule?.id);
   const isOrthodonticModule = Boolean(selectedOrthodonticSubmodule);
   const selectedImplantologySubmodule = implantologySubmodules.find((item) => item.moduleKey === selectedModule?.id);
@@ -1292,6 +1375,12 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       periapicalStatus: "",
       imagingFindings: "",
       endodonticObjective: "",
+      radiologyModality: "",
+      radiologyRegion: "",
+      radiologyIndication: "",
+      radiologyFindings: "",
+      radiologyHypothesis: "",
+      radiologyRecommendation: "",
       implantRegion: "",
       boneAssessment: "",
       prostheticPlan: "",
@@ -1336,6 +1425,19 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
         `Achados de imagem: ${form.imagingFindings || "Nao informado"}`,
         `Objetivo endodontico: ${form.endodonticObjective || "Nao informado"}`,
         `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}`,
+        `Notas gerais: ${form.notes || "Nao informado"}`
+      ].join("\n");
+    }
+    if (isRadiologyModule) {
+      return [
+        `Submodulo de radiologia odontologica: ${selectedRadiologySubmodule?.label || "Nao informado"}`,
+        `Escopo: ${selectedRadiologySubmodule?.description || "Nao informado"}`,
+        `Modalidade de imagem: ${form.radiologyModality || "Nao informado"}`,
+        `Regiao/estrutura avaliada: ${form.radiologyRegion || "Nao informado"}`,
+        `Indicacao clinica: ${form.radiologyIndication || "Nao informado"}`,
+        `Achados radiologicos: ${form.radiologyFindings || "Nao informado"}`,
+        `Hipotese/diagnostico por imagem: ${form.radiologyHypothesis || "Nao informado"}`,
+        `Recomendacao/conduta sugerida: ${form.radiologyRecommendation || "Nao informado"}`,
         `Notas gerais: ${form.notes || "Nao informado"}`
       ].join("\n");
     }
@@ -1423,6 +1525,15 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       isEndodonticModule ? `Achados de imagem: ${form.imagingFindings || "Nao informado"}` : "",
       isEndodonticModule ? `Objetivo endodontico: ${form.endodonticObjective || "Nao informado"}` : "",
       isEndodonticModule ? `Canais/testes/observacoes: ${form.canalNotes || "Nao informado"}` : "",
+      isRadiologyModule ? "Nota tecnica: Radiologia Odontologica e Imaginologia e especialidade reconhecida; os submodulos organizam linhas de atuacao para laudos, aquisicao, interpretacao, planejamento e IA." : "",
+      isRadiologyModule ? `Submodulo de radiologia odontologica: ${selectedRadiologySubmodule?.label || "Nao informado"}` : "",
+      isRadiologyModule ? `Escopo do submodulo: ${selectedRadiologySubmodule?.description || "Nao informado"}` : "",
+      isRadiologyModule ? `Modalidade de imagem: ${form.radiologyModality || "Nao informado"}` : "",
+      isRadiologyModule ? `Regiao/estrutura avaliada: ${form.radiologyRegion || "Nao informado"}` : "",
+      isRadiologyModule ? `Indicacao clinica: ${form.radiologyIndication || "Nao informado"}` : "",
+      isRadiologyModule ? `Achados radiologicos: ${form.radiologyFindings || "Nao informado"}` : "",
+      isRadiologyModule ? `Hipotese/diagnostico por imagem: ${form.radiologyHypothesis || "Nao informado"}` : "",
+      isRadiologyModule ? `Recomendacao/conduta sugerida: ${form.radiologyRecommendation || "Nao informado"}` : "",
       isImplantologyModule ? "Nota tecnica: Implantodontia e uma especialidade formal; estes itens sao submodulos funcionais e comerciais para organizar fluxo, cobranca e analise." : "",
       isImplantologyModule ? `Submodulo de implantodontia: ${selectedImplantologySubmodule?.label || "Nao informado"}` : "",
       isImplantologyModule ? `Escopo do submodulo: ${selectedImplantologySubmodule?.description || "Nao informado"}` : "",
@@ -1537,6 +1648,19 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
                 <Field label="Achados de imagem"><textarea rows={3} value={form.imagingFindings} onChange={(e) => setForm({ ...form, imagingFindings: e.target.value })} placeholder="Radiografia, CBCT, rarefacao, reabsorcao, anatomia radicular..." /></Field>
                 <Field label="Objetivo endodontico"><textarea rows={3} value={form.endodonticObjective} onChange={(e) => setForm({ ...form, endodonticObjective: e.target.value })} placeholder="Tratamento, retratamento, preservacao de vitalidade, regeneracao, cirurgia..." /></Field>
                 <Field label="Canais, testes e observacoes"><textarea rows={4} value={form.canalNotes} onChange={(e) => setForm({ ...form, canalNotes: e.target.value })} /></Field>
+              </>
+            )}
+            {isRadiologyModule && (
+              <>
+                <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Radiologia Odontologica e Imaginologia e organizada aqui em submodulos para aquisicao, interpretacao, diagnostico, planejamento e IA.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedRadiologySubmodule?.description} Custo do submodulo: {money(selectedRadiologySubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                {selectedModule.id === "exam-images-ai" && <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Este submodulo tambem possui a tela dedicada Exames IA para upload de imagem e analise visual real.</p>}
+                <Field label="Modalidade de imagem"><input value={form.radiologyModality} onChange={(e) => setForm({ ...form, radiologyModality: e.target.value })} placeholder="Periapical, bite-wing, panoramica, telerradiografia, CBCT..." /></Field>
+                <Field label="Regiao / estrutura avaliada"><input value={form.radiologyRegion} onChange={(e) => setForm({ ...form, radiologyRegion: e.target.value })} placeholder="Arcada, elemento, seio maxilar, canal mandibular, regiao periapical..." /></Field>
+                <Field label="Indicacao clinica"><textarea rows={3} value={form.radiologyIndication} onChange={(e) => setForm({ ...form, radiologyIndication: e.target.value })} placeholder="Carie, endodontia, implante, ortodontia, patologia, cirurgia..." /></Field>
+                <Field label="Achados radiologicos"><textarea rows={3} value={form.radiologyFindings} onChange={(e) => setForm({ ...form, radiologyFindings: e.target.value })} placeholder="Lesoes, padroes osseos, canais, volume osseo, alteracoes anatomicas..." /></Field>
+                <Field label="Hipotese / diagnostico por imagem"><textarea rows={3} value={form.radiologyHypothesis} onChange={(e) => setForm({ ...form, radiologyHypothesis: e.target.value })} placeholder="Diagnostico diferencial e interpretacao radiografica..." /></Field>
+                <Field label="Recomendacao / conduta sugerida"><textarea rows={3} value={form.radiologyRecommendation} onChange={(e) => setForm({ ...form, radiologyRecommendation: e.target.value })} placeholder="Complementar com CBCT, correlacionar clinicamente, acompanhar, encaminhar..." /></Field>
               </>
             )}
             {isOrthodonticModule && (

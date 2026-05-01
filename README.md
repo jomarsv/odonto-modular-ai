@@ -232,6 +232,23 @@ Todos os modulos de especialidade ativos possuem acoes de IA:
 
 Perguntas para IA sao cobradas por pergunta realizada, independentemente da especialidade perguntada estar ativa como modulo. Isso permite que uma clinica assine uma especialidade especifica, mas ainda faca perguntas pontuais sobre outras areas usando a tela `Uso de IA`. No MVP, `specialty-question` gera um evento `AI_QUESTION` e aplica uma cobranca minima por pergunta, alem do registro de tokens em `AIUsageLog`.
 
+A Radiologia Odontologica e Imaginologia e organizada em submodulos comerciais e funcionais. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
+
+- Radiologia com inteligencia artificial: R$ 199,90/mes;
+- Laudos radiologicos: R$ 129,90/mes;
+- Radiologia convencional intraoral: R$ 89,90/mes;
+- Radiologia extraoral: R$ 99,90/mes;
+- Tomografia computadorizada CBCT: R$ 169,90/mes;
+- Radiologia para planejamento cirurgico: R$ 149,90/mes;
+- Imaginologia digital: R$ 119,90/mes;
+- Diagnostico por imagem: R$ 139,90/mes;
+- Radiologia para patologias bucais: R$ 149,90/mes;
+- Radiologia ortodontica: R$ 119,90/mes;
+- Radiologia endodontica: R$ 129,90/mes;
+- Radiologia para implantodontia: R$ 149,90/mes.
+
+Campos especificos de cada submodulo de Radiologia entram no registro e no contexto de IA: submodulo, escopo, modalidade de imagem, regiao/estrutura avaliada, indicacao clinica, achados radiologicos, hipotese/diagnostico por imagem, recomendacao/conduta sugerida e observacoes. O submodulo `Radiologia com inteligencia artificial` tambem habilita a tela dedicada `Exames IA` para upload de imagem e analise visual.
+
 A Endodontia e organizada em submodulos comerciais e funcionais, sem tratar essas frentes como especialidades formais reconhecidas pelo CFO. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
 
 - Planejamento endodontico: R$ 89,90/mes;
