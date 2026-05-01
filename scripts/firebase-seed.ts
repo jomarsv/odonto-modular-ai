@@ -103,7 +103,7 @@ async function main() {
 
   const clinicId = "demo-clinic";
   const dentistId = "demo-dentist";
-  const leoTechAdminId = "leo-tech-admin";
+  const oelStartupAdminId = "oel-startup-admin";
   const patientId = "demo-patient";
   const passwordHash = await bcrypt.hash("demo1234", 12);
 
@@ -127,9 +127,9 @@ async function main() {
     updatedAt: now()
   });
 
-  await setDoc(collectionNames.users, leoTechAdminId, {
-    name: "LEO-Tech Admin",
-    email: "admin@leo-tech.com.br",
+  await setDoc(collectionNames.users, oelStartupAdminId, {
+    name: "OEL Startup Admin",
+    email: "admin@oelstartup.com.br",
     passwordHash,
     role: "LEO_TECH_ADMIN",
     clinicId: null,
@@ -187,7 +187,7 @@ async function main() {
   }
 
   console.log("Seed Firestore concluido. Login demo: dentista@demo.com / demo1234");
-  console.log("Login LEO-Tech: admin@leo-tech.com.br / demo1234");
+  console.log("Login OEL Startup: admin@oelstartup.com.br / demo1234");
 }
 
 main()

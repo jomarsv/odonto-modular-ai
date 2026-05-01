@@ -655,7 +655,7 @@ export default function App() {
   }, [api, session]);
 
   if (!session) return <Login onLogin={setSession} />;
-  if (session.user.role === "LEO_TECH_ADMIN") return <LeoTechConsole api={api} session={session} setSession={setSession} onSaved={setMessage} message={message} />;
+  if (session.user.role === "LEO_TECH_ADMIN") return <OelStartupConsole api={api} session={session} setSession={setSession} onSaved={setMessage} message={message} />;
   const enabledModules = new Set(modules.filter((module) => module.enabled).map((module) => module.key));
   const visibleTabs = tabs.filter(([id]) => {
     if (id === "users") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
@@ -692,6 +692,7 @@ export default function App() {
           <button className="btn-secondary mt-3 w-full" onClick={() => setSession(null)}>
             Sair
           </button>
+          <BrandCopyright className="mt-4" />
         </div>
       </aside>
       <main className="flex-1 p-4 lg:p-8">
@@ -777,13 +778,24 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
           >
             {mode === "login" ? "Cadastrar nova clinica" : "Voltar para login"}
           </button>
+          <BrandCopyright className="pt-2 text-center" />
         </div>
       </form>
     </div>
   );
 }
 
-function LeoTechConsole({
+function BrandCopyright({ className = "" }: { className?: string }) {
+  return (
+    <div className={`text-xs font-semibold text-slate-500 ${className}`}>
+      <p className="text-primary-700">@OEL Startup</p>
+      <p>São Luís - MA</p>
+      <p>Copyright © {new Date().getFullYear()} OEL Startup. Todos os direitos reservados.</p>
+    </div>
+  );
+}
+
+function OelStartupConsole({
   api,
   session,
   setSession,
@@ -819,19 +831,19 @@ function LeoTechConsole({
       monthlyPrice: status === "APPROVED" ? Number(review.monthlyPrice || 0) : 0
     });
     setReview({ reviewNotes: "", monthlyPrice: "99.9" });
-    onSaved(status === "APPROVED" ? "Pedido aprovado pela LEO-Tech." : "Pedido rejeitado pela LEO-Tech.");
+    onSaved(status === "APPROVED" ? "Pedido aprovado pela OEL Startup." : "Pedido rejeitado pela OEL Startup.");
     load();
   }
   async function updateModulePrice(moduleId: string) {
     await api.patch(`/platform/modules/${moduleId}/price`, { basePrice: Number(priceEdits[moduleId] ?? 0) });
-    onSaved("Preco do modulo atualizado pela LEO-Tech.");
+    onSaved("Preco do modulo atualizado pela OEL Startup.");
     load();
   }
   async function deleteRequest(id: string, title: string) {
     const confirmed = window.confirm(`Excluir o pedido "${title}"? Esta acao remove o pedido do console e, se aprovado, deixa de considerar esse extra na estimativa recorrente.`);
     if (!confirmed) return;
     await api.delete(`/platform/custom-features/${id}`);
-    onSaved("Pedido de funcionalidade excluido pela LEO-Tech.");
+    onSaved("Pedido de funcionalidade excluido pela OEL Startup.");
     load();
   }
   return (
@@ -839,7 +851,7 @@ function LeoTechConsole({
       <header className="border-b border-slate-200 bg-white px-5 py-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Console LEO-Tech</h1>
+            <h1 className="text-xl font-bold text-slate-900">Console OEL Startup</h1>
             <p className="text-sm text-slate-500">Gestao operacional da plataforma Odonto Modular AI</p>
           </div>
           <div className="flex items-center gap-3 text-sm text-slate-600">
@@ -860,7 +872,7 @@ function LeoTechConsole({
         <section className="panel overflow-hidden">
           <div className="border-b border-slate-200 p-4">
             <h2 className="font-semibold">Pedidos de funcionalidades</h2>
-            <p className="text-sm text-slate-500">Analise pela LEO-Tech com apoio de especialistas em odontologia.</p>
+            <p className="text-sm text-slate-500">Analise pela OEL Startup com apoio de especialistas em odontologia.</p>
           </div>
           <Table headers={["Clinica", "Especialidade", "Pedido", "Solicitante", "Status", "Custo", "Decisao", "Acoes"]}>
             {requests.map((request) => (
@@ -875,7 +887,7 @@ function LeoTechConsole({
                   {request.status === "REQUESTED" ? (
                     <div className="min-w-60 space-y-2">
                       <input placeholder="Preco mensal" value={review.monthlyPrice} onChange={(e) => setReview({ ...review, monthlyPrice: e.target.value })} />
-                      <textarea rows={2} placeholder="Parecer LEO-Tech" value={review.reviewNotes} onChange={(e) => setReview({ ...review, reviewNotes: e.target.value })} />
+                      <textarea rows={2} placeholder="Parecer OEL Startup" value={review.reviewNotes} onChange={(e) => setReview({ ...review, reviewNotes: e.target.value })} />
                       <div className="flex gap-2">
                         <button type="button" className="btn-primary" onClick={() => reviewRequest(String(request.id), "APPROVED")}>Aprovar</button>
                         <button type="button" className="btn-secondary" onClick={() => reviewRequest(String(request.id), "REJECTED")}>Rejeitar</button>
@@ -930,6 +942,9 @@ function LeoTechConsole({
             ))}
           </Table>
         </section>
+        <footer className="pt-2">
+          <BrandCopyright />
+        </footer>
       </main>
     </div>
   );
@@ -1705,9 +1720,9 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     loadFeatureRequests();
   }
   function customFeatureStatusLabel(request: CustomFeatureRequest) {
-    if (request.status === "REQUESTED") return "EM ANALISE PELA LEO-TECH";
+    if (request.status === "REQUESTED") return "EM ANALISE PELA OEL STARTUP";
     if (request.status === "APPROVED" && request.approvedForUserId === session.user.id) return "ADICIONADA PARA VOCE";
-    if (request.status === "APPROVED") return "APROVADA PELA LEO-TECH";
+    if (request.status === "APPROVED") return "APROVADA PELA OEL STARTUP";
     if (request.status === "REJECTED") return "NAO APROVADA";
     return request.status;
   }
@@ -1839,20 +1854,20 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
           <div className="space-y-4">
             <div className="panel p-4">
               <div className="mb-3">
-                <p className="text-xs font-semibold text-primary-700">Balcao LEO-Tech</p>
+                <p className="text-xs font-semibold text-primary-700">Balcao OEL Startup</p>
                 <h3 className="font-semibold">Extras personalizados</h3>
-                <p className="mt-1 text-sm text-slate-500">Solicite uma funcionalidade especifica para esta especialidade. A equipe LEO-Tech analisa com especialistas em odontologia e, se aprovar, adiciona o recurso somente para o usuario solicitante com custo mensal adicional.</p>
+                <p className="mt-1 text-sm text-slate-500">Solicite uma funcionalidade especifica para esta especialidade. A equipe OEL Startup analisa com especialistas em odontologia e, se aprovar, adiciona o recurso somente para o usuario solicitante com custo mensal adicional.</p>
               </div>
               <form onSubmit={requestCustomFeature} className="grid gap-3 lg:grid-cols-2">
                 <Field label="Funcionalidade desejada"><input required value={featureForm.title} onChange={(e) => setFeatureForm({ ...featureForm, title: e.target.value })} placeholder="Ex.: checklist de caso complexo" /></Field>
                 <Field label="Orcamento mensal sugerido"><input type="number" min="0" step="0.01" value={featureForm.suggestedMonthlyBudget} onChange={(e) => setFeatureForm({ ...featureForm, suggestedMonthlyBudget: e.target.value })} /></Field>
                 <Field label="Descricao"><textarea required rows={3} value={featureForm.description} onChange={(e) => setFeatureForm({ ...featureForm, description: e.target.value })} /></Field>
                 <Field label="Beneficio esperado"><textarea required rows={3} value={featureForm.expectedBenefit} onChange={(e) => setFeatureForm({ ...featureForm, expectedBenefit: e.target.value })} /></Field>
-                <div className="lg:col-span-2"><button className="btn-primary">Enviar para LEO-Tech</button></div>
+                <div className="lg:col-span-2"><button className="btn-primary">Enviar para OEL Startup</button></div>
               </form>
             </div>
             <div className="panel overflow-hidden">
-              <Table headers={["Funcionalidade", "Solicitante", "Status", "Custo", "Retorno LEO-Tech"]}>
+              <Table headers={["Funcionalidade", "Solicitante", "Status", "Custo", "Retorno OEL Startup"]}>
                 {featureRequests.map((request) => (
                   <tr key={request.id}>
                     <td><p className="font-medium">{request.title}</p><p className="text-xs text-slate-500">{request.description}</p></td>

@@ -232,14 +232,14 @@ Todos os modulos de especialidade ativos possuem acoes de IA:
 
 Perguntas para IA sao cobradas por pergunta realizada, independentemente da especialidade perguntada estar ativa como modulo. Isso permite que uma clinica assine uma especialidade especifica, mas ainda faca perguntas pontuais sobre outras areas usando a tela `Uso de IA`. No MVP, `specialty-question` gera um evento `AI_QUESTION` e aplica uma cobranca minima por pergunta, alem do registro de tokens em `AIUsageLog`.
 
-Os precos de modulos e submodulos podem ser ajustados pela LEO-Tech no `Console LEO-Tech`, na secao `Precificacao de modulos`. O valor editado atualiza o `basePrice` no Firestore e passa a ser usado por:
+Os precos de modulos e submodulos podem ser ajustados pela OEL Startup no `Console OEL Startup`, na secao `Precificacao de modulos`. O valor editado atualiza o `basePrice` no Firestore e passa a ser usado por:
 
 - tela de modulos da clinica;
 - estimativa mensal;
 - eventos de cobranca por ativacao/desativacao;
 - telas de especialidades.
 
-A sincronizacao automatica de modulos preserva precos editados pela LEO-Tech. O campo `defaultBasePrice` guarda o valor inicial sugerido do MVP para referencia.
+A sincronizacao automatica de modulos preserva precos editados pela OEL Startup. O campo `defaultBasePrice` guarda o valor inicial sugerido do MVP para referencia.
 
 Nas funcoes de IA por submodulo, o contexto e restrito por padrao aos dados adicionados naquele submodulo e ao historico do mesmo modulo. O prontuario e as imagens do paciente so entram na entrada enviada para IA quando o usuario marca explicitamente `Incluir prontuario deste paciente na IA` ou `Incluir imagens/analises deste paciente na IA`. Essa regra evita mistura indevida de dados entre especialidades/submodulos e reduz consumo desnecessario.
 
@@ -357,14 +357,14 @@ A Ortodontia tambem e organizada em submodulos comerciais e funcionais. Cada sub
 
 Campos especificos de cada submodulo de Ortodontia entram no registro e no contexto de IA: submodulo, escopo, classe esqueletica/relacao sagital, maloclusao e achados principais, objetivos ortodonticos e observacoes.
 
-### Balcao LEO-Tech de funcionalidades personalizadas
+### Balcao OEL Startup de funcionalidades personalizadas
 
-Cada modulo de especialidade possui um `Balcao LEO-Tech`, usado para solicitar extras especificos da especialidade. O fluxo do MVP e:
+Cada modulo de especialidade possui um `Balcao OEL Startup`, usado para solicitar extras especificos da especialidade. O fluxo do MVP e:
 
 - o usuario solicita uma funcionalidade extra dentro da especialidade ativa;
-- a solicitacao fica em analise pela LEO-Tech;
-- a equipe LEO-Tech analisa o pedido com apoio de especialistas em odontologia;
-- se aprovado, a LEO-Tech adiciona a funcionalidade e libera somente para o usuario solicitante;
+- a solicitacao fica em analise pela OEL Startup;
+- a equipe OEL Startup analisa o pedido com apoio de especialistas em odontologia;
+- se aprovado, a OEL Startup adiciona a funcionalidade e libera somente para o usuario solicitante;
 - o extra aprovado entra na fatura como custo mensal adicional em `Extras personalizados`;
 - a aprovacao cria um `BillingEvent` do tipo `CUSTOM_FEATURE_APPROVED`.
 
@@ -372,9 +372,9 @@ Essa estrutura permite vender diferenciais personalizados por usuario, sem obrig
 
 A rota de revisao fica restrita a usuarios `LEO_TECH_ADMIN`, evitando que gestores da propria clinica aprovem seus pedidos.
 
-## Console LEO-Tech
+## Console OEL Startup
 
-O app possui um console operacional separado para a empresa mantenedora da plataforma. Usuarios com role `LEO_TECH_ADMIN` entram no `Console LEO-Tech` em vez do menu da clinica.
+O app possui um console operacional separado para a empresa mantenedora da plataforma. Usuarios com role `LEO_TECH_ADMIN` entram no `Console OEL Startup` em vez do menu da clinica.
 
 Esse console permite:
 
@@ -388,7 +388,7 @@ Esse console permite:
 Usuario criado pelo seed:
 
 ```text
-E-mail: admin@leo-tech.com.br
+E-mail: admin@oelstartup.com.br
 Senha: demo1234
 Role: LEO_TECH_ADMIN
 ```
@@ -396,10 +396,14 @@ Role: LEO_TECH_ADMIN
 Em producao, configure:
 
 ```text
-LEO_TECH_ADMIN_EMAILS=admin@leo-tech.com.br
+OEL_STARTUP_ADMIN_EMAILS=admin@oelstartup.com.br
 ```
 
-Para criar outro operador LEO-Tech, crie um documento em `users` com `role: "LEO_TECH_ADMIN"`, `clinicId: null`, `email`, `name` e `passwordHash`.
+Para criar outro operador OEL Startup, crie um documento em `users` com `role: "LEO_TECH_ADMIN"`, `clinicId: null`, `email`, `name` e `passwordHash`.
+
+## Copyright
+
+© OEL Startup. São Luís - MA. Todos os direitos reservados.
 
 - Pacientes
 - Agenda

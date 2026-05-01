@@ -14,7 +14,7 @@ export const config = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173",
-  leoTechAdminEmails: (process.env.LEO_TECH_ADMIN_EMAILS ?? "")
+  oelStartupAdminEmails: (process.env.OEL_STARTUP_ADMIN_EMAILS ?? process.env.LEO_TECH_ADMIN_EMAILS ?? "")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)

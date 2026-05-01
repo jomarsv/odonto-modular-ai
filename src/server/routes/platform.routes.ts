@@ -20,16 +20,16 @@ const modulePriceSchema = z.object({
 export const platformRouter = Router();
 platformRouter.use(authenticate);
 
-function requireLeoTech(req: Parameters<typeof requireUser>[0]) {
+function requireOelStartup(req: Parameters<typeof requireUser>[0]) {
   const user = requireUser(req);
-  if (user.role !== "LEO_TECH_ADMIN") throw new HttpError(403, "Acesso restrito a LEO-Tech.");
+  if (user.role !== "LEO_TECH_ADMIN") throw new HttpError(403, "Acesso restrito a OEL Startup.");
   return user;
 }
 
 platformRouter.get(
   "/summary",
   asyncHandler(async (req, res) => {
-    requireLeoTech(req);
+    requireOelStartup(req);
     const [clinics, users, requests, aiUsage, billingEvents] = await Promise.all([
       db().collection(collectionNames.clinics).get(),
       db().collection(collectionNames.users).get(),
@@ -54,7 +54,7 @@ platformRouter.get(
 platformRouter.get(
   "/clinics",
   asyncHandler(async (req, res) => {
-    requireLeoTech(req);
+    requireOelStartup(req);
     const clinics = serializeDocs<Record<string, unknown>>(await db().collection(collectionNames.clinics).get())
       .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
     const enriched = await Promise.all(
@@ -79,7 +79,7 @@ platformRouter.get(
 platformRouter.get(
   "/custom-features",
   asyncHandler(async (req, res) => {
-    requireLeoTech(req);
+    requireOelStartup(req);
     const rows = serializeDocs<Record<string, unknown>>(
       await db().collection(collectionNames.customFeatureRequests).get()
     )
@@ -99,7 +99,7 @@ platformRouter.get(
 platformRouter.get(
   "/modules",
   asyncHandler(async (req, res) => {
-    requireLeoTech(req);
+    requireOelStartup(req);
     const modules = serializeDocs<Record<string, unknown>>(
       await db().collection(collectionNames.modules).where("isActive", "==", true).get()
     ).sort((a, b) =>
@@ -114,7 +114,7 @@ platformRouter.get(
 platformRouter.patch(
   "/modules/:id/price",
   asyncHandler(async (req, res) => {
-    const user = requireLeoTech(req);
+    const user = requireOelStartup(req);
     const data = modulePriceSchema.parse(req.body);
     const module = await getById<Record<string, unknown>>(collectionNames.modules, String(req.params.id));
     if (!module) throw new HttpError(404, "Modulo nao encontrado.");
@@ -133,7 +133,7 @@ platformRouter.patch(
 platformRouter.patch(
   "/custom-features/:id/review",
   asyncHandler(async (req, res) => {
-    const user = requireLeoTech(req);
+    const user = requireOelStartup(req);
     const data = reviewSchema.parse(req.body);
     const current = await getById<Record<string, unknown>>(collectionNames.customFeatureRequests, String(req.params.id));
     if (!current) throw new HttpError(404, "Solicitacao nao encontrada.");
@@ -141,7 +141,7 @@ platformRouter.patch(
 
     const updated = await updateDoc(collectionNames.customFeatureRequests, String(req.params.id), {
       status: data.status,
-      reviewNotes: `LEO-Tech: ${data.reviewNotes}`,
+      reviewNotes: `OEL Startup: ${data.reviewNotes}`,
       reviewedById: user.id,
       reviewedAt: now(),
       approvedForUserId: data.status === "APPROVED" ? current.requestedById : null,
@@ -168,7 +168,7 @@ platformRouter.patch(
 platformRouter.delete(
   "/custom-features/:id",
   asyncHandler(async (req, res) => {
-    const user = requireLeoTech(req);
+    const user = requireOelStartup(req);
     const current = await getById<Record<string, unknown>>(collectionNames.customFeatureRequests, String(req.params.id));
     if (!current) throw new HttpError(404, "Solicitacao nao encontrada.");
 

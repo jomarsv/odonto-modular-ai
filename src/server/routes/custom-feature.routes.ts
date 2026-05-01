@@ -26,8 +26,8 @@ const reviewSchema = z.object({
 export const customFeatureRouter = Router();
 customFeatureRouter.use(authenticate);
 
-function canReviewAsLeoTech(user: { role: string; email?: string }) {
-  return user.role === "LEO_TECH_ADMIN" || (user.role === "ADMIN" && config.leoTechAdminEmails.includes(String(user.email ?? "").toLowerCase()));
+function canReviewAsOelStartup(user: { role: string; email?: string }) {
+  return user.role === "LEO_TECH_ADMIN" || (user.role === "ADMIN" && config.oelStartupAdminEmails.includes(String(user.email ?? "").toLowerCase()));
 }
 
 function canViewClinicRequests(role: string) {
@@ -104,7 +104,7 @@ customFeatureRouter.patch(
   "/:id/review",
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
-    if (!canReviewAsLeoTech(user)) throw new HttpError(403, "Somente a equipe LEO-Tech pode revisar solicitacoes.");
+    if (!canReviewAsOelStartup(user)) throw new HttpError(403, "Somente a equipe OEL Startup pode revisar solicitacoes.");
     const data = reviewSchema.parse(req.body);
     const current = await getById<Record<string, unknown>>(collectionNames.customFeatureRequests, String(req.params.id));
     if (!current || current.clinicId !== user.clinicId) throw new HttpError(404, "Solicitacao nao encontrada.");
@@ -112,7 +112,7 @@ customFeatureRouter.patch(
 
     const updated = await updateDoc(collectionNames.customFeatureRequests, String(req.params.id), {
       status: data.status,
-      reviewNotes: `LEO-Tech: ${data.reviewNotes}`,
+      reviewNotes: `OEL Startup: ${data.reviewNotes}`,
       reviewedById: user.id,
       reviewedAt: now(),
       approvedForUserId: data.status === "APPROVED" ? current.requestedById : null,
