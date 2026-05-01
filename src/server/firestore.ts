@@ -21,6 +21,8 @@ export const collectionNames = {
   paymentWebhookEvents: "paymentWebhookEvents",
   moduleWorkspaceEntries: "moduleWorkspaceEntries",
   customFeatureRequests: "customFeatureRequests",
+  marketplaceListings: "marketplaceListings",
+  marketplaceQuoteRequests: "marketplaceQuoteRequests",
   actionLogs: "actionLogs"
 } as const;
 

@@ -405,6 +405,32 @@ Para criar outro operador OEL Startup, crie um documento em `users` com `role: "
 
 © OEL Startup. São Luís - MA. Todos os direitos reservados.
 
+## Marketplace odontologico
+
+O MVP inclui um modulo comum `Marketplace odontologico`, pensado como vitrine odontologica controlada, sem checkout e sem pagamento direto. A clinica pode criar anuncios de:
+
+- produtos odontologicos;
+- equipamentos;
+- cursos;
+- servicos odontologicos, como radiologia, laudos, planejamento digital, guias cirurgicos, manutencao e consultorias.
+
+Os anuncios criados por clinicas entram com status `PENDING` e precisam ser aprovados no `Console OEL Startup` antes de aparecerem para outras clinicas. Interessados usam `Solicitar orcamento`, gerando um registro em `marketplaceQuoteRequests`. A negociacao e o pagamento ficam fora da plataforma nesta fase.
+
+Colecoes usadas:
+
+- `marketplaceListings`;
+- `marketplaceQuoteRequests`.
+
+Rotas principais:
+
+- `GET /api/marketplace/listings`;
+- `POST /api/marketplace/listings`;
+- `POST /api/marketplace/listings/:id/quote-requests`;
+- `GET /api/marketplace/quote-requests`;
+- `GET /api/platform/marketplace/listings`;
+- `PATCH /api/platform/marketplace/listings/:id/review`;
+- `DELETE /api/platform/marketplace/listings/:id`.
+
 - Pacientes
 - Agenda
 - Prontuario

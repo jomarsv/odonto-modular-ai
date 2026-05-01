@@ -101,6 +101,41 @@ type CustomFeatureRequest = {
   createdAt: string;
 };
 
+type MarketplaceListing = {
+  id: string;
+  title: string;
+  description: string;
+  listingType: string;
+  category: string;
+  specialty?: string | null;
+  priceMode: string;
+  price?: number | null;
+  contactName: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  location?: string | null;
+  clinicId: string;
+  status: string;
+  moderationNotes?: string | null;
+  clinic?: { name?: string; email?: string } | null;
+  createdBy?: { name?: string; email?: string } | null;
+  createdAt: string;
+};
+
+type MarketplaceQuoteRequest = {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  requesterClinicId: string;
+  sellerClinicId: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string | null;
+  message: string;
+  status: string;
+  createdAt: string;
+};
+
 const tabs = [
   ["dashboard", "Dashboard"],
   ["patients", "Pacientes"],
@@ -114,6 +149,7 @@ const tabs = [
   ["profile", "Perfil"],
   ["audit", "Auditoria"],
   ["account", "Conta"],
+  ["marketplace", "Marketplace"],
   ["modules", "Modulos"],
   ["ai", "Uso de IA"],
   ["billing", "Cobranca"]
@@ -127,6 +163,7 @@ const tabModules: Partial<Record<(typeof tabs)[number][0], string[]>> = {
   examImages: ["exam-images-ai"],
   specialties: [],
   ai: ["ai-basic", "ai-advanced"],
+  marketplace: ["marketplace"],
   billing: ["billing"]
 };
 
@@ -709,6 +746,7 @@ export default function App() {
         {activeTab === "profile" && <Profile api={api} session={session} setSession={setSession} onSaved={setMessage} />}
         {activeTab === "audit" && <Audit api={api} />}
         {activeTab === "account" && <AccountStatus api={api} />}
+        {activeTab === "marketplace" && <Marketplace api={api} session={session} onSaved={setMessage} />}
         {activeTab === "modules" && <Modules api={api} modules={modules} onModulesChanged={loadModules} onSaved={setMessage} />}
         {activeTab === "ai" && <AIUsage api={api} onSaved={setMessage} />}
         {activeTab === "billing" && <Billing api={api} />}
@@ -827,6 +865,7 @@ function OelStartupConsole({
   const [summary, setSummary] = useState<Record<string, any> | null>(null);
   const [clinics, setClinics] = useState<Array<Record<string, any>>>([]);
   const [requests, setRequests] = useState<Array<Record<string, any>>>([]);
+  const [marketplaceListings, setMarketplaceListings] = useState<MarketplaceListing[]>([]);
   const [platformModules, setPlatformModules] = useState<Array<Record<string, any>>>([]);
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [review, setReview] = useState({ reviewNotes: "", monthlyPrice: "99.9" });
@@ -834,6 +873,7 @@ function OelStartupConsole({
     api.get<Record<string, any>>("/platform/summary").then(setSummary);
     api.get<Array<Record<string, any>>>("/platform/clinics").then(setClinics);
     api.get<Array<Record<string, any>>>("/platform/custom-features").then(setRequests);
+    api.get<MarketplaceListing[]>("/platform/marketplace/listings").then(setMarketplaceListings);
     api.get<Array<Record<string, any>>>("/platform/modules").then((items) => {
       setPlatformModules(items);
       setPriceEdits(Object.fromEntries(items.map((item) => [String(item.id), String(item.basePrice ?? 0)])));
@@ -860,6 +900,21 @@ function OelStartupConsole({
     if (!confirmed) return;
     await api.delete(`/platform/custom-features/${id}`);
     onSaved("Pedido de funcionalidade excluido pela OEL Startup.");
+    load();
+  }
+  async function reviewMarketplaceListing(id: string, status: "APPROVED" | "REJECTED") {
+    await api.patch(`/platform/marketplace/listings/${id}/review`, {
+      status,
+      moderationNotes: status === "APPROVED" ? "Anuncio aprovado para vitrine odontologica." : "Anuncio nao aprovado neste momento."
+    });
+    onSaved(status === "APPROVED" ? "Anuncio aprovado." : "Anuncio rejeitado.");
+    load();
+  }
+  async function deleteMarketplaceListing(id: string, title: string) {
+    const confirmed = window.confirm(`Excluir o anuncio "${title}" do marketplace?`);
+    if (!confirmed) return;
+    await api.delete(`/platform/marketplace/listings/${id}`);
+    onSaved("Anuncio excluido do marketplace.");
     load();
   }
   return (
@@ -937,6 +992,30 @@ function OelStartupConsole({
                 <td>{String(clinic.usersCount ?? 0)}</td>
                 <td>{String(clinic.customFeatureRequestsCount ?? 0)}</td>
                 <td>{String(clinic.aiTokensTotal ?? 0)}</td>
+              </tr>
+            ))}
+          </Table>
+        </section>
+        <section className="panel overflow-hidden">
+          <div className="border-b border-slate-200 p-4">
+            <h2 className="font-semibold">Marketplace odontologico</h2>
+            <p className="text-sm text-slate-500">Moderacao dos anuncios da vitrine. No MVP nao ha checkout nem pagamento direto.</p>
+          </div>
+          <Table headers={["Clinica", "Anuncio", "Tipo", "Status", "Preco", "Acoes"]}>
+            {marketplaceListings.map((listing) => (
+              <tr key={listing.id}>
+                <td>{listing.clinic?.name ?? listing.clinicId}</td>
+                <td><p className="font-medium">{listing.title}</p><p className="text-xs text-slate-500">{listing.description}</p></td>
+                <td>{listing.listingType} · {listing.category}</td>
+                <td>{listing.status}</td>
+                <td>{listing.priceMode === "QUOTE" ? "Sob consulta" : money(listing.price ?? 0)}</td>
+                <td>
+                  <div className="flex flex-wrap gap-2">
+                    {listing.status === "PENDING" && <button type="button" className="btn-primary" onClick={() => reviewMarketplaceListing(listing.id, "APPROVED")}>Aprovar</button>}
+                    {listing.status === "PENDING" && <button type="button" className="btn-secondary" onClick={() => reviewMarketplaceListing(listing.id, "REJECTED")}>Rejeitar</button>}
+                    <button type="button" className="btn-secondary text-red-700 hover:border-red-300 hover:bg-red-50" onClick={() => deleteMarketplaceListing(listing.id, listing.title)}>Excluir</button>
+                  </div>
+                </td>
               </tr>
             ))}
           </Table>
@@ -1974,6 +2053,150 @@ function Modules({
             <p className="mt-3 text-sm font-semibold">{money(m.basePrice)}</p>
           </div>
         ))}
+      </div>
+    </Section>
+  );
+}
+
+function Marketplace({ api, session, onSaved }: { api: ApiClient; session: Session; onSaved: (message: string) => void }) {
+  const [listings, setListings] = useState<MarketplaceListing[]>([]);
+  const [quotes, setQuotes] = useState<MarketplaceQuoteRequest[]>([]);
+  const [filters, setFilters] = useState({ search: "", type: "", category: "" });
+  const [listingForm, setListingForm] = useState({
+    title: "",
+    description: "",
+    listingType: "SERVICE",
+    category: "Radiologia odontologica",
+    specialty: "",
+    priceMode: "QUOTE",
+    price: "",
+    contactName: session.user.name,
+    contactEmail: session.user.email,
+    contactPhone: "",
+    location: "Sao Luis - MA"
+  });
+  const [quoteForm, setQuoteForm] = useState({ listingId: "", contactName: session.user.name, contactEmail: session.user.email, contactPhone: "", message: "" });
+  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value.trim())).toString();
+  const load = () => {
+    api.get<MarketplaceListing[]>(`/marketplace/listings${query ? `?${query}` : ""}`).then(setListings);
+    api.get<MarketplaceQuoteRequest[]>("/marketplace/quote-requests").then(setQuotes);
+  };
+  useEffect(load, [api, query]);
+  async function createListing(event: FormEvent) {
+    event.preventDefault();
+    await api.post("/marketplace/listings", {
+      ...listingForm,
+      price: listingForm.price ? Number(listingForm.price) : undefined,
+      specialty: listingForm.specialty || undefined,
+      contactPhone: listingForm.contactPhone || undefined
+    });
+    setListingForm({ ...listingForm, title: "", description: "", price: "" });
+    onSaved("Anuncio enviado para analise da OEL Startup.");
+    load();
+  }
+  async function requestQuote(event: FormEvent) {
+    event.preventDefault();
+    await api.post(`/marketplace/listings/${quoteForm.listingId}/quote-requests`, {
+      contactName: quoteForm.contactName,
+      contactEmail: quoteForm.contactEmail,
+      contactPhone: quoteForm.contactPhone || undefined,
+      message: quoteForm.message
+    });
+    setQuoteForm({ ...quoteForm, listingId: "", message: "" });
+    onSaved("Solicitacao de orcamento enviada.");
+    load();
+  }
+  const myListings = listings.filter((item) => item.clinicId === session.user.clinicId);
+  const publicListings = listings.filter((item) => item.status === "APPROVED");
+  return (
+    <Section title="Marketplace odontologico">
+      <div className="mb-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
+        Vitrine odontologica para produtos, equipamentos, cursos e servicos. MVP sem pagamento direto: interessados enviam solicitacoes de orcamento e a negociacao acontece fora da plataforma.
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[390px_1fr]">
+        <div className="space-y-4">
+          <form onSubmit={createListing} className="panel space-y-3 p-4">
+            <h2 className="font-semibold">Criar anuncio</h2>
+            <Field label="Titulo"><input required value={listingForm.title} onChange={(e) => setListingForm({ ...listingForm, title: e.target.value })} /></Field>
+            <Field label="Tipo"><select value={listingForm.listingType} onChange={(e) => setListingForm({ ...listingForm, listingType: e.target.value })}><option value="SERVICE">Servico</option><option value="PRODUCT">Produto</option><option value="EQUIPMENT">Equipamento</option><option value="COURSE">Curso</option></select></Field>
+            <Field label="Categoria"><input required value={listingForm.category} onChange={(e) => setListingForm({ ...listingForm, category: e.target.value })} /></Field>
+            <Field label="Especialidade"><input value={listingForm.specialty} onChange={(e) => setListingForm({ ...listingForm, specialty: e.target.value })} placeholder="Ex.: Endodontia, Radiologia, Implantodontia" /></Field>
+            <Field label="Descricao"><textarea required rows={4} value={listingForm.description} onChange={(e) => setListingForm({ ...listingForm, description: e.target.value })} /></Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Preco"><select value={listingForm.priceMode} onChange={(e) => setListingForm({ ...listingForm, priceMode: e.target.value })}><option value="QUOTE">Sob consulta</option><option value="FROM">A partir de</option><option value="FIXED">Valor fixo</option></select></Field>
+              <Field label="Valor"><input type="number" min="0" step="0.01" value={listingForm.price} onChange={(e) => setListingForm({ ...listingForm, price: e.target.value })} disabled={listingForm.priceMode === "QUOTE"} /></Field>
+            </div>
+            <Field label="Contato"><input required value={listingForm.contactName} onChange={(e) => setListingForm({ ...listingForm, contactName: e.target.value })} /></Field>
+            <Field label="E-mail"><input type="email" value={listingForm.contactEmail} onChange={(e) => setListingForm({ ...listingForm, contactEmail: e.target.value })} /></Field>
+            <Field label="Telefone"><input value={listingForm.contactPhone} onChange={(e) => setListingForm({ ...listingForm, contactPhone: e.target.value })} /></Field>
+            <Field label="Localidade"><input value={listingForm.location} onChange={(e) => setListingForm({ ...listingForm, location: e.target.value })} /></Field>
+            <button className="btn-primary">Enviar para analise</button>
+          </form>
+          <div className="panel p-4">
+            <h2 className="font-semibold">Meus anuncios</h2>
+            <div className="mt-3 space-y-3">
+              {myListings.map((item) => (
+                <div key={item.id} className="rounded-md border border-slate-200 p-3 text-sm">
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="text-slate-500">{item.status}{item.moderationNotes ? ` - ${item.moderationNotes}` : ""}</p>
+                </div>
+              ))}
+              {!myListings.length && <p className="text-sm text-slate-500">Nenhum anuncio criado.</p>}
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="panel p-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Buscar"><input value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} /></Field>
+              <Field label="Tipo"><select value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })}><option value="">Todos</option><option value="SERVICE">Servico</option><option value="PRODUCT">Produto</option><option value="EQUIPMENT">Equipamento</option><option value="COURSE">Curso</option></select></Field>
+              <Field label="Categoria"><input value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} /></Field>
+            </div>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {publicListings.map((item) => (
+              <div key={item.id} className="panel p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-primary-700">{item.listingType} · {item.category}</p>
+                    <h3 className="mt-1 font-semibold">{item.title}</h3>
+                  </div>
+                  <p className="text-sm font-semibold">{item.priceMode === "QUOTE" ? "Sob consulta" : `${item.priceMode === "FROM" ? "A partir de " : ""}${money(item.price ?? 0)}`}</p>
+                </div>
+                <p className="mt-2 text-sm text-slate-600">{item.description}</p>
+                <p className="mt-3 text-xs text-slate-500">{item.specialty || "Odontologia geral"} · {item.location || "Localidade nao informada"}</p>
+                <p className="mt-1 text-xs text-slate-500">Contato: {item.contactName}</p>
+                {item.clinicId !== session.user.clinicId && (
+                  <button type="button" className="btn-secondary mt-3" onClick={() => setQuoteForm({ ...quoteForm, listingId: item.id, message: `Tenho interesse em: ${item.title}` })}>Solicitar orcamento</button>
+                )}
+              </div>
+            ))}
+          </div>
+          {!publicListings.length && <p className="panel p-4 text-sm text-slate-500">Nenhum anuncio aprovado encontrado.</p>}
+          {quoteForm.listingId && (
+            <form onSubmit={requestQuote} className="panel space-y-3 p-4">
+              <h2 className="font-semibold">Solicitar orcamento</h2>
+              <Field label="Nome"><input required value={quoteForm.contactName} onChange={(e) => setQuoteForm({ ...quoteForm, contactName: e.target.value })} /></Field>
+              <Field label="E-mail"><input required type="email" value={quoteForm.contactEmail} onChange={(e) => setQuoteForm({ ...quoteForm, contactEmail: e.target.value })} /></Field>
+              <Field label="Telefone"><input value={quoteForm.contactPhone} onChange={(e) => setQuoteForm({ ...quoteForm, contactPhone: e.target.value })} /></Field>
+              <Field label="Mensagem"><textarea required rows={4} value={quoteForm.message} onChange={(e) => setQuoteForm({ ...quoteForm, message: e.target.value })} /></Field>
+              <div className="flex gap-2"><button className="btn-primary">Enviar</button><button type="button" className="btn-secondary" onClick={() => setQuoteForm({ ...quoteForm, listingId: "", message: "" })}>Cancelar</button></div>
+            </form>
+          )}
+          <div className="panel overflow-hidden">
+            <div className="border-b border-slate-200 p-4"><h2 className="font-semibold">Solicitacoes de orcamento</h2></div>
+            <Table headers={["Anuncio", "Contato", "Mensagem", "Status"]}>
+              {quotes.map((quote) => (
+                <tr key={quote.id}>
+                  <td>{quote.listingTitle}</td>
+                  <td><p>{quote.contactName}</p><p className="text-xs text-slate-500">{quote.contactEmail} {quote.contactPhone || ""}</p></td>
+                  <td>{quote.message}</td>
+                  <td>{quote.status}</td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+        </div>
       </div>
     </Section>
   );

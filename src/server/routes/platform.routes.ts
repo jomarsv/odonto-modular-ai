@@ -17,6 +17,11 @@ const modulePriceSchema = z.object({
   pricingNotes: z.string().max(500).optional()
 });
 
+const marketplaceListingReviewSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  moderationNotes: z.string().max(500).optional().default("")
+});
+
 export const platformRouter = Router();
 platformRouter.use(authenticate);
 
@@ -108,6 +113,57 @@ platformRouter.get(
       )
     );
     res.json(modules);
+  })
+);
+
+platformRouter.get(
+  "/marketplace/listings",
+  asyncHandler(async (req, res) => {
+    requireOelStartup(req);
+    const rows = serializeDocs<Record<string, unknown>>(
+      await db().collection(collectionNames.marketplaceListings).get()
+    )
+      .sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")))
+      .slice(0, 200);
+    const enriched = await Promise.all(
+      rows.map(async (item) => ({
+        ...item,
+        clinic: item.clinicId ? await getById(collectionNames.clinics, String(item.clinicId)) : null,
+        createdBy: item.createdById ? await getById(collectionNames.users, String(item.createdById)) : null
+      }))
+    );
+    res.json(enriched);
+  })
+);
+
+platformRouter.patch(
+  "/marketplace/listings/:id/review",
+  asyncHandler(async (req, res) => {
+    const user = requireOelStartup(req);
+    const data = marketplaceListingReviewSchema.parse(req.body);
+    const current = await getById<Record<string, unknown>>(collectionNames.marketplaceListings, String(req.params.id));
+    if (!current) throw new HttpError(404, "Anuncio nao encontrado.");
+    const updated = await updateDoc(collectionNames.marketplaceListings, String(req.params.id), {
+      status: data.status,
+      moderationNotes: data.moderationNotes || null,
+      reviewedById: user.id,
+      reviewedAt: now(),
+      updatedAt: now()
+    });
+    await logAction({ clinicId: String(current.clinicId), userId: user.id, action: "OEL_MARKETPLACE_REVIEW", entity: "MarketplaceListing", entityId: String(req.params.id) });
+    res.json(updated);
+  })
+);
+
+platformRouter.delete(
+  "/marketplace/listings/:id",
+  asyncHandler(async (req, res) => {
+    const user = requireOelStartup(req);
+    const current = await getById<Record<string, unknown>>(collectionNames.marketplaceListings, String(req.params.id));
+    if (!current) throw new HttpError(404, "Anuncio nao encontrado.");
+    await deleteDoc(collectionNames.marketplaceListings, String(req.params.id));
+    await logAction({ clinicId: String(current.clinicId), userId: user.id, action: "OEL_MARKETPLACE_DELETE", entity: "MarketplaceListing", entityId: String(req.params.id) });
+    res.status(204).send();
   })
 );
 
