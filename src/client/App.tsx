@@ -648,9 +648,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number][0]>("dashboard");
   const [message, setMessage] = useState("");
   const [modules, setModules] = useState<ModuleItem[]>([]);
+  const loadModules = () => api.get<ModuleItem[]>("/modules").then(setModules).catch(() => setModules([]));
 
   useEffect(() => {
-    if (session) api.get<ModuleItem[]>("/modules").then(setModules).catch(() => setModules([]));
+    if (session) loadModules();
   }, [api, session]);
 
   if (!session) return <Login onLogin={setSession} />;
@@ -707,7 +708,7 @@ export default function App() {
         {activeTab === "profile" && <Profile api={api} session={session} setSession={setSession} onSaved={setMessage} />}
         {activeTab === "audit" && <Audit api={api} />}
         {activeTab === "account" && <AccountStatus api={api} />}
-        {activeTab === "modules" && <Modules api={api} onSaved={setMessage} />}
+        {activeTab === "modules" && <Modules api={api} modules={modules} onModulesChanged={loadModules} onSaved={setMessage} />}
         {activeTab === "ai" && <AIUsage api={api} onSaved={setMessage} />}
         {activeTab === "billing" && <Billing api={api} />}
       </main>
@@ -1316,6 +1317,7 @@ function ExamImages({ api, onSaved }: { api: ApiClient; onSaved: (message: strin
 
 function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modules: ModuleItem[]; session: Session; onSaved: (message: string) => void }) {
   const activeSpecialtyModules = modules.filter((module) => module.enabled && module.scope === "SPECIALTY");
+  const activeSpecialtyModuleIds = activeSpecialtyModules.map((module) => module.id).join("|");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedModuleId, setSelectedModuleId] = useState(activeSpecialtyModules[0]?.id ?? "");
   const [entries, setEntries] = useState<Array<Record<string, any>>>([]);
@@ -1397,8 +1399,14 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   useEffect(loadEntries, [api, selectedModuleId]);
   useEffect(loadFeatureRequests, [api, selectedModuleId]);
   useEffect(() => {
-    if (!selectedModuleId && activeSpecialtyModules[0]) setSelectedModuleId(activeSpecialtyModules[0].id);
-  }, [activeSpecialtyModules.length, selectedModuleId]);
+    if (!activeSpecialtyModules.length) {
+      if (selectedModuleId) setSelectedModuleId("");
+      return;
+    }
+    if (!selectedModuleId || !activeSpecialtyModules.some((module) => module.id === selectedModuleId)) {
+      setSelectedModuleId(activeSpecialtyModules[0].id);
+    }
+  }, [activeSpecialtyModuleIds, selectedModuleId]);
   async function save(event: FormEvent) {
     event.preventDefault();
     await api.post("/module-workspace", {
@@ -1876,17 +1884,22 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
   );
 }
 
-function Modules({ api, onSaved }: { api: ApiClient; onSaved: (message: string) => void }) {
-  const [modules, setModules] = useState<ModuleItem[]>([]);
+function Modules({
+  api,
+  modules,
+  onModulesChanged,
+  onSaved
+}: {
+  api: ApiClient;
+  modules: ModuleItem[];
+  onModulesChanged: () => Promise<void>;
+  onSaved: (message: string) => void;
+}) {
   const [activeGroup, setActiveGroup] = useState("common");
-  const load = () => api.get<typeof modules>("/modules").then(setModules);
-  useEffect(() => {
-    load();
-  }, []);
   async function toggle(id: string, enabled: boolean) {
     await api.patch(`/modules/${id}`, { enabled });
+    await onModulesChanged();
     onSaved(enabled ? "Modulo ativado." : "Modulo desativado.");
-    load();
   }
   const groups = [
     { key: "common", label: "Comuns", count: modules.filter((module) => (module.scope ?? "COMMON") === "COMMON").length },
