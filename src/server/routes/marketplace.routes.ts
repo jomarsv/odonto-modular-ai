@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { addDoc, collectionNames, db, getById, now, serializeDocs } from "../firestore.js";
+import { addDoc, collectionNames, db, getById, now, serializeDocs, setDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
@@ -29,10 +29,38 @@ const quoteRequestSchema = z.object({
 export const marketplaceRouter = Router();
 marketplaceRouter.use(authenticate);
 
+async function ensureDemoListing() {
+  const id = "demo-marketplace-radiology-report";
+  const current = await getById<Record<string, unknown>>(collectionNames.marketplaceListings, id);
+  if (current) return;
+  await setDoc(collectionNames.marketplaceListings, id, {
+    title: "Laudo radiologico odontologico por especialista",
+    description:
+      "Exemplo de anuncio do MVP: interpretacao de radiografias panoramicas, periapicais e CBCT com emissao de parecer tecnico para apoio ao planejamento clinico. Atendimento sob demanda, sem pagamento direto pela plataforma nesta fase.",
+    listingType: "SERVICE",
+    category: "Radiologia odontologica",
+    specialty: "Radiologia odontologica e imaginologia",
+    priceMode: "FROM",
+    price: 89.9,
+    contactName: "Equipe OEL Startup",
+    contactEmail: "contato@oelstartup.com.br",
+    contactPhone: "(98) 00000-0000",
+    location: "Sao Luis - MA",
+    clinicId: "__oel_startup_demo__",
+    createdById: "__oel_startup_demo__",
+    status: "APPROVED",
+    moderationNotes: "Anuncio demonstrativo do MVP.",
+    isDemo: true,
+    createdAt: now(),
+    updatedAt: now()
+  });
+}
+
 marketplaceRouter.get(
   "/listings",
   asyncHandler(async (req, res) => {
     const user = requireUser(req);
+    await ensureDemoListing();
     const rows = serializeDocs<Record<string, unknown>>(
       await db().collection(collectionNames.marketplaceListings).get()
     )
@@ -90,7 +118,7 @@ marketplaceRouter.post(
     const user = requireUser(req);
     const listing = await getById<Record<string, unknown>>(collectionNames.marketplaceListings, String(req.params.id));
     if (!listing || listing.status !== "APPROVED") throw new HttpError(404, "Anuncio nao encontrado ou ainda nao aprovado.");
-    if (listing.clinicId === user.clinicId) throw new HttpError(400, "A propria clinica nao pode solicitar orcamento do seu anuncio.");
+    if (listing.clinicId === user.clinicId && !listing.isDemo) throw new HttpError(400, "A propria clinica nao pode solicitar orcamento do seu anuncio.");
     const data = quoteRequestSchema.parse(req.body);
     const quote = await addDoc(collectionNames.marketplaceQuoteRequests, {
       ...data,

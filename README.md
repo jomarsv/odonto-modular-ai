@@ -416,6 +416,8 @@ O MVP inclui o `Marketplace odontologico`, pensado como vitrine odontologica con
 
 Os anuncios criados entram com status `PENDING` e precisam ser aprovados no `Console OEL Startup` antes de aparecerem para outros usuarios. Interessados usam `Solicitar orcamento`, gerando um registro em `marketplaceQuoteRequests`. A negociacao e o pagamento ficam fora da plataforma nesta fase.
 
+Para demonstracao do MVP, a vitrine cria automaticamente um anuncio aprovado de exemplo para `Laudo radiologico odontologico por especialista`, marcado com `isDemo: true`.
+
 Colecoes usadas:
 
 - `marketplaceListings`;
