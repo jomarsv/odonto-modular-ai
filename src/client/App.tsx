@@ -788,6 +788,22 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
 function BrandCopyright({ className = "" }: { className?: string }) {
   return (
     <div className={`text-xs font-semibold text-slate-500 ${className}`}>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="relative inline-block h-7 w-11 overflow-hidden rounded-sm bg-[#009b3a] shadow-sm ring-1 ring-slate-200" aria-label="Bandeira do Brasil" role="img">
+          <span className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-[#ffdf00]" />
+          <span className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#002776]" />
+        </span>
+        <span className="relative inline-block h-7 w-11 overflow-hidden rounded-sm bg-white shadow-sm ring-1 ring-slate-200" aria-label="Bandeira do Maranhao" role="img">
+          <span className="absolute inset-x-0 top-0 h-[11.11%] bg-[#d01c1f]" />
+          <span className="absolute inset-x-0 top-[22.22%] h-[11.11%] bg-[#d01c1f]" />
+          <span className="absolute inset-x-0 top-[44.44%] h-[11.11%] bg-[#d01c1f]" />
+          <span className="absolute inset-x-0 top-[66.66%] h-[11.11%] bg-[#d01c1f]" />
+          <span className="absolute inset-x-0 top-[88.88%] h-[11.11%] bg-[#d01c1f]" />
+          <span className="absolute left-0 top-0 h-4 w-5 bg-[#1f2a68]">
+            <span className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-white" />
+          </span>
+        </span>
+      </div>
       <p className="text-primary-700">@OEL Startup</p>
       <p>São Luís - MA</p>
       <p>Copyright © {new Date().getFullYear()} OEL Startup. Todos os direitos reservados.</p>
