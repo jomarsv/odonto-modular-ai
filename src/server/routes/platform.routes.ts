@@ -12,6 +12,11 @@ const reviewSchema = z.object({
   monthlyPrice: z.coerce.number().min(0).default(0)
 });
 
+const modulePriceSchema = z.object({
+  basePrice: z.coerce.number().min(0),
+  pricingNotes: z.string().max(500).optional()
+});
+
 export const platformRouter = Router();
 platformRouter.use(authenticate);
 
@@ -88,6 +93,40 @@ platformRouter.get(
       }))
     );
     res.json(enriched);
+  })
+);
+
+platformRouter.get(
+  "/modules",
+  asyncHandler(async (req, res) => {
+    requireLeoTech(req);
+    const modules = serializeDocs<Record<string, unknown>>(
+      await db().collection(collectionNames.modules).where("isActive", "==", true).get()
+    ).sort((a, b) =>
+      `${a.scope ?? ""}${a.specialtyName ?? ""}${a.category ?? ""}${a.name ?? ""}`.localeCompare(
+        `${b.scope ?? ""}${b.specialtyName ?? ""}${b.category ?? ""}${b.name ?? ""}`
+      )
+    );
+    res.json(modules);
+  })
+);
+
+platformRouter.patch(
+  "/modules/:id/price",
+  asyncHandler(async (req, res) => {
+    const user = requireLeoTech(req);
+    const data = modulePriceSchema.parse(req.body);
+    const module = await getById<Record<string, unknown>>(collectionNames.modules, String(req.params.id));
+    if (!module) throw new HttpError(404, "Modulo nao encontrado.");
+    const updated = await updateDoc(collectionNames.modules, String(req.params.id), {
+      basePrice: data.basePrice,
+      pricingNotes: data.pricingNotes ?? null,
+      priceUpdatedById: user.id,
+      priceUpdatedAt: now(),
+      updatedAt: now()
+    });
+    await logAction({ clinicId: "__leo_tech_platform__", userId: user.id, action: "UPDATE_MODULE_PRICE", entity: "Module", entityId: String(req.params.id) });
+    res.json(updated);
   })
 );
 

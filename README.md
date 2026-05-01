@@ -232,6 +232,17 @@ Todos os modulos de especialidade ativos possuem acoes de IA:
 
 Perguntas para IA sao cobradas por pergunta realizada, independentemente da especialidade perguntada estar ativa como modulo. Isso permite que uma clinica assine uma especialidade especifica, mas ainda faca perguntas pontuais sobre outras areas usando a tela `Uso de IA`. No MVP, `specialty-question` gera um evento `AI_QUESTION` e aplica uma cobranca minima por pergunta, alem do registro de tokens em `AIUsageLog`.
 
+Os precos de modulos e submodulos podem ser ajustados pela LEO-Tech no `Console LEO-Tech`, na secao `Precificacao de modulos`. O valor editado atualiza o `basePrice` no Firestore e passa a ser usado por:
+
+- tela de modulos da clinica;
+- estimativa mensal;
+- eventos de cobranca por ativacao/desativacao;
+- telas de especialidades.
+
+A sincronizacao automatica de modulos preserva precos editados pela LEO-Tech. O campo `defaultBasePrice` guarda o valor inicial sugerido do MVP para referencia.
+
+Nas funcoes de IA por submodulo, o contexto e restrito por padrao aos dados adicionados naquele submodulo e ao historico do mesmo modulo. O prontuario e as imagens do paciente so entram na entrada enviada para IA quando o usuario marca explicitamente `Incluir prontuario deste paciente na IA` ou `Incluir imagens/analises deste paciente na IA`. Essa regra evita mistura indevida de dados entre especialidades/submodulos e reduz consumo desnecessario.
+
 A Radiologia Odontologica e Imaginologia e organizada em submodulos comerciais e funcionais. Cada submodulo pode ser ativado/desativado individualmente, possui preco proprio e aparece separadamente em `Especialidades` quando ativo:
 
 - Radiologia com inteligencia artificial: R$ 199,90/mes;

@@ -798,11 +798,17 @@ function LeoTechConsole({
   const [summary, setSummary] = useState<Record<string, any> | null>(null);
   const [clinics, setClinics] = useState<Array<Record<string, any>>>([]);
   const [requests, setRequests] = useState<Array<Record<string, any>>>([]);
+  const [platformModules, setPlatformModules] = useState<Array<Record<string, any>>>([]);
+  const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [review, setReview] = useState({ reviewNotes: "", monthlyPrice: "99.9" });
   const load = () => {
     api.get<Record<string, any>>("/platform/summary").then(setSummary);
     api.get<Array<Record<string, any>>>("/platform/clinics").then(setClinics);
     api.get<Array<Record<string, any>>>("/platform/custom-features").then(setRequests);
+    api.get<Array<Record<string, any>>>("/platform/modules").then((items) => {
+      setPlatformModules(items);
+      setPriceEdits(Object.fromEntries(items.map((item) => [String(item.id), String(item.basePrice ?? 0)])));
+    });
   };
   useEffect(load, [api]);
   async function reviewRequest(id: string, status: "APPROVED" | "REJECTED") {
@@ -813,6 +819,11 @@ function LeoTechConsole({
     });
     setReview({ reviewNotes: "", monthlyPrice: "99.9" });
     onSaved(status === "APPROVED" ? "Pedido aprovado pela LEO-Tech." : "Pedido rejeitado pela LEO-Tech.");
+    load();
+  }
+  async function updateModulePrice(moduleId: string) {
+    await api.patch(`/platform/modules/${moduleId}/price`, { basePrice: Number(priceEdits[moduleId] ?? 0) });
+    onSaved("Preco do modulo atualizado pela LEO-Tech.");
     load();
   }
   return (
@@ -881,6 +892,23 @@ function LeoTechConsole({
                 <td>{String(clinic.usersCount ?? 0)}</td>
                 <td>{String(clinic.customFeatureRequestsCount ?? 0)}</td>
                 <td>{String(clinic.aiTokensTotal ?? 0)}</td>
+              </tr>
+            ))}
+          </Table>
+        </section>
+        <section className="panel overflow-hidden">
+          <div className="border-b border-slate-200 p-4">
+            <h2 className="font-semibold">Precificacao de modulos</h2>
+            <p className="text-sm text-slate-500">Ajuste os valores oficiais usados na ativacao de modulos, estimativa mensal e cobranca recorrente.</p>
+          </div>
+          <Table headers={["Modulo", "Escopo", "Especialidade", "Preco mensal", "Acao"]}>
+            {platformModules.map((module) => (
+              <tr key={String(module.id)}>
+                <td><p className="font-medium">{String(module.name)}</p><p className="text-xs text-slate-500">{String(module.description ?? "")}</p></td>
+                <td>{String(module.scope ?? "COMMON")}</td>
+                <td>{String(module.specialtyName ?? "-")}</td>
+                <td><input type="number" min="0" step="0.01" value={priceEdits[String(module.id)] ?? ""} onChange={(e) => setPriceEdits({ ...priceEdits, [String(module.id)]: e.target.value })} /></td>
+                <td><button type="button" className="btn-secondary" onClick={() => updateModulePrice(String(module.id))}>Salvar preco</button></td>
               </tr>
             ))}
           </Table>
@@ -1322,6 +1350,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     skeletalClass: "",
     malocclusion: "",
     orthodonticObjectives: "",
+    includeClinicalRecord: false,
+    includeExamImages: false,
     aiQuestion: ""
   });
   const [featureForm, setFeatureForm] = useState({ title: "", description: "", expectedBenefit: "", suggestedMonthlyBudget: "" });
@@ -1408,6 +1438,8 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       skeletalClass: "",
       malocclusion: "",
       orthodonticObjectives: "",
+      includeClinicalRecord: false,
+      includeExamImages: false,
       aiQuestion: ""
     });
     onSaved("Registro do modulo salvo.");
@@ -1505,13 +1537,50 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
     }
     return form.notes;
   }
-  function buildSpecialtyAIInput() {
+  async function loadOptionalSpecialtyContext() {
+    if (!form.patientId) return [];
+    const blocks: string[] = [];
+    if (form.includeClinicalRecord) {
+      const summary = await api.get<Record<string, any>>(`/records/patient/${form.patientId}/summary`).catch(() => null);
+      if (summary) {
+        const records = Array.isArray(summary.records) ? summary.records.slice(0, 3) : [];
+        const procedures = Array.isArray(summary.procedures) ? summary.procedures.slice(0, 5) : [];
+        blocks.push([
+          "Prontuario incluido por solicitacao do usuario:",
+          `Paciente: ${String(summary.patient?.fullName ?? "Nao informado")}`,
+          `Registros clinicos: ${records.map((record: any) => [
+            `Anamnese: ${String(record.anamnesis ?? "")}`,
+            `Diagnostico: ${String(record.diagnosisNotes ?? "")}`,
+            `Plano: ${String(record.treatmentPlan ?? "")}`,
+            `Evolucao: ${String(record.evolutionNotes ?? "")}`
+          ].filter(Boolean).join(" | ")).join("\n") || "Sem registros"}`,
+          `Procedimentos: ${procedures.map((procedure: any) => `${String(procedure.procedureName ?? "")} (${String(procedure.status ?? "")}): ${String(procedure.notes ?? "")}`).join("\n") || "Sem procedimentos"}`
+        ].join("\n"));
+      }
+    }
+    if (form.includeExamImages) {
+      const exams = await api.get<Array<Record<string, any>>>(`/exam-images/patient/${form.patientId}`).catch(() => []);
+      blocks.push([
+        "Imagens incluidas por solicitacao do usuario:",
+        exams.slice(0, 5).map((exam) => [
+          `Exame: ${String(exam.examType ?? "")}`,
+          `Arquivo: ${String(exam.fileName ?? "")}`,
+          `Status: ${String(exam.analysisStatus ?? "")}`,
+          `Analise: ${String(exam.analysisResult ?? "Sem analise registrada")}`
+        ].join(" | ")).join("\n") || "Sem imagens disponiveis ou modulo de imagem inativo"
+      ].join("\n"));
+    }
+    return blocks;
+  }
+  async function buildSpecialtyAIInput() {
     const patient = patients.find((item) => item.id === form.patientId);
     const recentEntries = entries
       .slice(0, 5)
       .map((entry) => `- ${entry.title} (${entry.status}): ${entry.notes}`)
       .join("\n");
+    const optionalContext = await loadOptionalSpecialtyContext();
     return [
+      "Regra de escopo: analise somente os dados do submodulo selecionado. Use prontuario e imagens apenas quando os blocos opcionais estiverem presentes nesta entrada.",
       `Especialidade: ${selectedModule?.specialtyName}`,
       `Modulo: ${selectedModule?.name}`,
       `Paciente: ${patient?.fullName ?? "Nao vinculado"}`,
@@ -1579,6 +1648,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       `Registro atual: ${form.title || "Sem titulo"}`,
       `Notas atuais: ${form.notes || "Sem notas"}`,
       `Historico recente do modulo:\n${recentEntries || "Sem historico"}`,
+      ...optionalContext,
       `Pergunta para IA: ${form.aiQuestion || "Realize uma analise tecnica do caso e sugira proximos passos."}`
     ]
       .filter(Boolean)
@@ -1589,7 +1659,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
       featureKey,
       precisionLevel: "ADVANCED",
       patientId: form.patientId || undefined,
-      input: buildSpecialtyAIInput()
+      input: await buildSpecialtyAIInput()
     });
     setAiResult(response.text);
     onSaved(featureKey === "specialty-analysis" ? "Analise da especialidade gerada." : "Pergunta respondida pela IA.");
@@ -1640,7 +1710,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             {isEndodonticModule && (
               <>
                 <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Endodontia nao se subdivide oficialmente em especialidades formais pelo CFO. Este item e tratado como submodulo comercial e funcional dentro da especialidade.</p>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedEndodonticSubmodule?.description} Custo do submodulo: {money(selectedEndodonticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedEndodonticSubmodule?.description} Custo do submodulo: {money(selectedModule.basePrice)} / mes.</p>
                 <Field label="Dente/regiao"><input value={form.tooth} onChange={(e) => setForm({ ...form, tooth: e.target.value })} /></Field>
                 <Field label="Hipotese diagnostica"><input value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} /></Field>
                 <Field label="Status pulpar"><input value={form.pulpStatus} onChange={(e) => setForm({ ...form, pulpStatus: e.target.value })} placeholder="Ex.: pulpite irreversivel, necrose, polpa normal..." /></Field>
@@ -1653,7 +1723,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             {isRadiologyModule && (
               <>
                 <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Radiologia Odontologica e Imaginologia e organizada aqui em submodulos para aquisicao, interpretacao, diagnostico, planejamento e IA.</p>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedRadiologySubmodule?.description} Custo do submodulo: {money(selectedRadiologySubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedRadiologySubmodule?.description} Custo do submodulo: {money(selectedModule.basePrice)} / mes.</p>
                 {selectedModule.id === "exam-images-ai" && <p className="rounded-md bg-amber-50 p-3 text-xs text-amber-800">Este submodulo tambem possui a tela dedicada Exames IA para upload de imagem e analise visual real.</p>}
                 <Field label="Modalidade de imagem"><input value={form.radiologyModality} onChange={(e) => setForm({ ...form, radiologyModality: e.target.value })} placeholder="Periapical, bite-wing, panoramica, telerradiografia, CBCT..." /></Field>
                 <Field label="Regiao / estrutura avaliada"><input value={form.radiologyRegion} onChange={(e) => setForm({ ...form, radiologyRegion: e.target.value })} placeholder="Arcada, elemento, seio maxilar, canal mandibular, regiao periapical..." /></Field>
@@ -1666,7 +1736,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             {isOrthodonticModule && (
               <>
                 <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Ortodontia e organizada aqui em submodulos comerciais e funcionais para prevencao, interceptacao, correcao, estetica, tecnologia, cirurgia e IA.</p>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedOrthodonticSubmodule?.description} Custo do submodulo: {money(selectedOrthodonticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedOrthodonticSubmodule?.description} Custo do submodulo: {money(selectedModule.basePrice)} / mes.</p>
                 <Field label="Classe esqueletica / relacao sagital"><input value={form.skeletalClass} onChange={(e) => setForm({ ...form, skeletalClass: e.target.value })} placeholder="Ex.: Classe I, Classe II, Classe III" /></Field>
                 <Field label="Maloclusao e achados principais"><textarea rows={4} value={form.malocclusion} onChange={(e) => setForm({ ...form, malocclusion: e.target.value })} placeholder="Apinhamento, mordida aberta, sobremordida, mordida cruzada..." /></Field>
                 <Field label="Objetivos ortodonticos"><textarea rows={4} value={form.orthodonticObjectives} onChange={(e) => setForm({ ...form, orthodonticObjectives: e.target.value })} placeholder="Alinhamento, nivelamento, correcao transversal, controle vertical..." /></Field>
@@ -1675,7 +1745,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             {isImplantologyModule && (
               <>
                 <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Implantodontia e uma especialidade formal; este item e tratado como submodulo comercial e funcional para fluxo, cobranca e analise especifica.</p>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedImplantologySubmodule?.description} Custo do submodulo: {money(selectedImplantologySubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedImplantologySubmodule?.description} Custo do submodulo: {money(selectedModule.basePrice)} / mes.</p>
                 <Field label="Regiao / elementos"><input value={form.implantRegion} onChange={(e) => setForm({ ...form, implantRegion: e.target.value })} placeholder="Ex.: 11, 21, posterior mandibula, protocolo superior..." /></Field>
                 <Field label="Avaliacao ossea"><textarea rows={3} value={form.boneAssessment} onChange={(e) => setForm({ ...form, boneAssessment: e.target.value })} placeholder="Volume, densidade, altura, espessura, necessidade de enxerto..." /></Field>
                 <Field label="Planejamento protetico"><textarea rows={3} value={form.prostheticPlan} onChange={(e) => setForm({ ...form, prostheticPlan: e.target.value })} placeholder="Coroa, protocolo, carga, oclusao, perfil de emergencia..." /></Field>
@@ -1687,7 +1757,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             {isPeriodonticModule && (
               <>
                 <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Periodontia e organizada aqui em submodulos comerciais e funcionais para prevencao, tratamento, cirurgia, regeneracao, estetica, interface perio-implante, manutencao e IA.</p>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedPeriodonticSubmodule?.description} Custo do submodulo: {money(selectedPeriodonticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedPeriodonticSubmodule?.description} Custo do submodulo: {money(selectedModule.basePrice)} / mes.</p>
                 <Field label="Diagnostico periodontal"><input value={form.periodontalDiagnosis} onChange={(e) => setForm({ ...form, periodontalDiagnosis: e.target.value })} placeholder="Ex.: gengivite, periodontite, peri-implantite..." /></Field>
                 <Field label="Periodontograma / achados"><textarea rows={3} value={form.periodontalChartFindings} onChange={(e) => setForm({ ...form, periodontalChartFindings: e.target.value })} placeholder="Sondagem, sangramento, recessao, mobilidade, furca, perda ossea..." /></Field>
                 <Field label="Plano terapeutico periodontal"><textarea rows={3} value={form.periodontalTherapyPlan} onChange={(e) => setForm({ ...form, periodontalTherapyPlan: e.target.value })} placeholder="Profilaxia, raspagem, retalho, regeneracao, recobrimento, biomateriais..." /></Field>
@@ -1699,7 +1769,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             {isAestheticModule && (
               <>
                 <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Odontologia Estetica/Dentistica Estetica e organizada aqui em submodulos comerciais e funcionais para fluxo, cobranca e analise especifica.</p>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedAestheticSubmodule?.description} Custo do submodulo: {money(selectedAestheticSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedAestheticSubmodule?.description} Custo do submodulo: {money(selectedModule.basePrice)} / mes.</p>
                 <Field label="Queixa / objetivo estetico"><textarea rows={3} value={form.smileComplaint} onChange={(e) => setForm({ ...form, smileComplaint: e.target.value })} placeholder="Cor, forma, diastema, fratura, proporcao, harmonia do sorriso..." /></Field>
                 <Field label="Meta de cor / clareamento"><input value={form.shadeGoal} onChange={(e) => setForm({ ...form, shadeGoal: e.target.value })} placeholder="Ex.: A1, BL2, clareamento interno, caseiro..." /></Field>
                 <Field label="Forma, proporcao e reanatomizacao"><textarea rows={3} value={form.toothShapePlan} onChange={(e) => setForm({ ...form, toothShapePlan: e.target.value })} placeholder="Formato dental, largura/altura, borda incisal, fechamento de diastemas..." /></Field>
@@ -1711,7 +1781,7 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             {isPediatricModule && (
               <>
                 <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">A Odontopediatria e organizada aqui em submodulos comerciais e funcionais para atendimento infantil, prevencao, comportamento, casos especiais e IA.</p>
-                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedPediatricSubmodule?.description} Custo do submodulo: {money(selectedPediatricSubmodule?.monthlyPrice ?? selectedModule.basePrice)} / mes.</p>
+                <p className="rounded-md bg-primary-50 p-3 text-xs text-primary-800">{selectedPediatricSubmodule?.description} Custo do submodulo: {money(selectedModule.basePrice)} / mes.</p>
                 <Field label="Idade / fase infantil"><input value={form.childAgeContext} onChange={(e) => setForm({ ...form, childAgeContext: e.target.value })} placeholder="Ex.: bebe, denticao decidua, mista, adolescente..." /></Field>
                 <Field label="Orientacao aos pais / responsaveis"><textarea rows={3} value={form.caregiverGuidance} onChange={(e) => setForm({ ...form, caregiverGuidance: e.target.value })} placeholder="Aleitamento, higiene inicial, habitos, rotina familiar, retorno..." /></Field>
                 <Field label="Prevencao, dieta e higiene"><textarea rows={3} value={form.preventionPlan} onChange={(e) => setForm({ ...form, preventionPlan: e.target.value })} placeholder="Fluor, selantes, dieta, controle de biofilme, educacao em saude..." /></Field>
@@ -1723,6 +1793,17 @@ function Specialties({ api, modules, session, onSaved }: { api: ApiClient; modul
             <Field label="Titulo"><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
             <Field label="Status"><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{["OPEN", "IN_PROGRESS", "DONE"].map((status) => <option key={status}>{status}</option>)}</select></Field>
             <Field label="Notas do modulo"><textarea required rows={6} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
+            <div className="grid gap-2 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+              <label className="flex items-center gap-2 normal-case tracking-normal">
+                <input className="h-4 w-4" type="checkbox" checked={form.includeClinicalRecord} disabled={!form.patientId} onChange={(e) => setForm({ ...form, includeClinicalRecord: e.target.checked })} />
+                Incluir prontuario deste paciente na IA
+              </label>
+              <label className="flex items-center gap-2 normal-case tracking-normal">
+                <input className="h-4 w-4" type="checkbox" checked={form.includeExamImages} disabled={!form.patientId} onChange={(e) => setForm({ ...form, includeExamImages: e.target.checked })} />
+                Incluir imagens/analises deste paciente na IA
+              </label>
+              <p className="text-xs text-slate-500">Por padrao, a IA usa apenas os campos e o historico deste submodulo. Prontuario e imagens entram somente quando marcados.</p>
+            </div>
             <Field label="Pergunta para IA"><textarea rows={4} value={form.aiQuestion} onChange={(e) => setForm({ ...form, aiQuestion: e.target.value })} /></Field>
             <div className="flex flex-wrap gap-2">
               <button className="btn-primary">Salvar registro</button>

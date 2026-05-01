@@ -101,13 +101,16 @@ const availableModules = [
 
 async function ensureAvailableModules() {
   await Promise.all(
-    availableModules.map((module) =>
-      setDoc(collectionNames.modules, module.key, {
+    availableModules.map(async (module) => {
+      const current = await getById<Record<string, unknown>>(collectionNames.modules, module.key);
+      return setDoc(collectionNames.modules, module.key, {
         ...module,
+        basePrice: current?.basePrice ?? module.basePrice,
+        defaultBasePrice: current?.defaultBasePrice ?? module.basePrice,
         isActive: true,
         updatedAt: now()
-      })
-    )
+      });
+    })
   );
 }
 
