@@ -2,7 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 import { addDoc, collectionNames, db, getById, now, serializeDocs } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
-import { requireModule } from "../middleware/modules.js";
 import { logAction } from "../services/audit.service.js";
 import { asyncHandler, HttpError, requireUser } from "../utils/http.js";
 
@@ -29,7 +28,6 @@ const quoteRequestSchema = z.object({
 
 export const marketplaceRouter = Router();
 marketplaceRouter.use(authenticate);
-marketplaceRouter.use(requireModule(["marketplace"]));
 
 marketplaceRouter.get(
   "/listings",

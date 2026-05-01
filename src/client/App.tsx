@@ -163,7 +163,6 @@ const tabModules: Partial<Record<(typeof tabs)[number][0], string[]>> = {
   examImages: ["exam-images-ai"],
   specialties: [],
   ai: ["ai-basic", "ai-advanced"],
-  marketplace: ["marketplace"],
   billing: ["billing"]
 };
 
@@ -698,6 +697,7 @@ export default function App() {
     if (id === "users") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
     if (id === "clinic") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
     if (id === "audit") return ["ADMIN", "CLINIC_MANAGER"].includes(session.user.role);
+    if (id === "marketplace") return true;
     if (id === "specialties") return modules.some((module) => module.enabled && module.scope === "SPECIALTY");
     const required = tabModules[id];
     return !required || required.some((key) => enabledModules.has(key));
@@ -2111,7 +2111,7 @@ function Marketplace({ api, session, onSaved }: { api: ApiClient; session: Sessi
   return (
     <Section title="Marketplace odontologico">
       <div className="mb-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
-        Vitrine odontologica para produtos, equipamentos, cursos e servicos. MVP sem pagamento direto: interessados enviam solicitacoes de orcamento e a negociacao acontece fora da plataforma.
+        Vitrine odontologica aberta a usuarios autenticados, incluindo dentistas individuais, MEI e freelancers. MVP sem pagamento direto: interessados enviam solicitacoes de orcamento e a negociacao acontece fora da plataforma.
       </div>
       <div className="grid gap-4 xl:grid-cols-[390px_1fr]">
         <div className="space-y-4">
