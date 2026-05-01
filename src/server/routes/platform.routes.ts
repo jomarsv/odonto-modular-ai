@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { collectionNames, db, getById, now, serializeDocs, updateDoc } from "../firestore.js";
+import { collectionNames, db, deleteDoc, getById, now, serializeDocs, updateDoc } from "../firestore.js";
 import { authenticate } from "../middleware/auth.js";
 import { createCustomFeatureBillingEvent } from "../services/billing.service.js";
 import { logAction } from "../services/audit.service.js";
@@ -162,5 +162,24 @@ platformRouter.patch(
     }
     await logAction({ clinicId: String(current.clinicId), userId: user.id, action: "LEO_TECH_REVIEW", entity: "CustomFeatureRequest", entityId: String(req.params.id) });
     res.json(updated);
+  })
+);
+
+platformRouter.delete(
+  "/custom-features/:id",
+  asyncHandler(async (req, res) => {
+    const user = requireLeoTech(req);
+    const current = await getById<Record<string, unknown>>(collectionNames.customFeatureRequests, String(req.params.id));
+    if (!current) throw new HttpError(404, "Solicitacao nao encontrada.");
+
+    await deleteDoc(collectionNames.customFeatureRequests, String(req.params.id));
+    await logAction({
+      clinicId: String(current.clinicId ?? "__leo_tech_platform__"),
+      userId: user.id,
+      action: "LEO_TECH_DELETE",
+      entity: "CustomFeatureRequest",
+      entityId: String(req.params.id)
+    });
+    res.status(204).send();
   })
 );

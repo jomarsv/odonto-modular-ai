@@ -826,6 +826,13 @@ function LeoTechConsole({
     onSaved("Preco do modulo atualizado pela LEO-Tech.");
     load();
   }
+  async function deleteRequest(id: string, title: string) {
+    const confirmed = window.confirm(`Excluir o pedido "${title}"? Esta acao remove o pedido do console e, se aprovado, deixa de considerar esse extra na estimativa recorrente.`);
+    if (!confirmed) return;
+    await api.delete(`/platform/custom-features/${id}`);
+    onSaved("Pedido de funcionalidade excluido pela LEO-Tech.");
+    load();
+  }
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white px-5 py-4">
@@ -854,7 +861,7 @@ function LeoTechConsole({
             <h2 className="font-semibold">Pedidos de funcionalidades</h2>
             <p className="text-sm text-slate-500">Analise pela LEO-Tech com apoio de especialistas em odontologia.</p>
           </div>
-          <Table headers={["Clinica", "Especialidade", "Pedido", "Solicitante", "Status", "Custo", "Decisao"]}>
+          <Table headers={["Clinica", "Especialidade", "Pedido", "Solicitante", "Status", "Custo", "Decisao", "Acoes"]}>
             {requests.map((request) => (
               <tr key={String(request.id)}>
                 <td>{String(request.clinic?.name ?? request.clinicId)}</td>
@@ -876,6 +883,15 @@ function LeoTechConsole({
                   ) : (
                     <span className="text-sm text-slate-500">{String(request.reviewNotes ?? "Revisado")}</span>
                   )}
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn-secondary text-red-700 hover:border-red-300 hover:bg-red-50"
+                    onClick={() => deleteRequest(String(request.id), String(request.title))}
+                  >
+                    Excluir
+                  </button>
                 </td>
               </tr>
             ))}
